@@ -1,28 +1,35 @@
+<!-- --- START OF FILE index.html --- -->
+
 <!DOCTYPE html>
 <html>
 <head>
     <base target="_top">
     <title>工會會員管理系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     
     <!-- 引入 Chart.js 主程式庫 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <!-- 引入 Chart.js 資料標籤插件 -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
-    
-    <!-- 引入 SheetJS (js-xlsx) 函式庫，用於生成 Excel 檔案 -->
+    <!-- 引入 SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-    <!-- 載入 CSS 樣式表 (Stylesheet.html) -->
     <?!= include('Stylesheet'); ?> 
-
 </head>
 <body>
     <div class="app-container">
+        
+        <!-- NEW: 手機版專用的頂部導覽列 (只有手機會顯示) -->
+        <div class="mobile-header">
+            <button id="mobile-menu-btn" class="hamburger-btn">☰</button>
+            <span class="mobile-title">CRM 系統</span>
+        </div>
+
         <!-- 左側導覽列 -->
-        <nav class="sidebar">
+        <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h3>CRM 系統</h3>
+                <!-- 電腦版縮放按鈕 -->
                 <button id="sidebar-toggle-btn" title="收合側邊欄">
                     <span class="icon-collapse">&laquo;</span>
                     <span class="icon-expand">&raquo;</span>
@@ -31,35 +38,32 @@
             <ul>
                 <li><a id="nav-dashboard">📊 <span class="nav-text">儀表板</span></a></li>
                 <li><a id="nav-members">👥 <span class="nav-text">會員管理</span></a></li>
-                <!-- NEW: Reconciliation Page Link -->
                 <li><a id="nav-reconciliation">🧾 <span class="nav-text">帳務核對</span></a></li>
                 <li><a id="nav-backend" target="_blank">📄 <span class="nav-text">資料後台</span></a></li>
             </ul>
         </nav>
         
+        <!-- NEW: 手機版側邊欄打開時的黑色遮罩 -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
         <!-- 右側主內容區 -->
         <main class="main-content">
-            <!-- 載入動畫 -->
             <div id="loader" class="loader-overlay"><div class="loader-spinner"></div></div>
             
-            <!-- 儀表板頁面容器 -->
             <div id="page-dashboard" class="page">
                 <?!= include('Dashboard'); ?>
             </div>
             
-            <!-- 會員管理頁面容器 -->
             <div id="page-members" class="page">
                 <?!= include('MemberList'); ?>
             </div>
 
-            <!-- NEW: Reconciliation Page Container -->
             <div id="page-reconciliation" class="page">
                 <?!= include('Reconciliation'); ?>
             </div>
         </main>
     </div>
 
-    <!-- 載入主要的 JavaScript 邏輯 -->
     <?!= include('JavaScript'); ?>
 </body>
 </html>
