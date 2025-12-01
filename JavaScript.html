@@ -1,8 +1,14 @@
+<!-- --- START OF FILE JavaScript.html --- -->
+
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    // --- GLOBAL ELEMENTS & VARIABLES ---
-    const sidebar = document.querySelector('.sidebar');
+    // --- ELEMENTS ---
+    const sidebar = document.getElementById('sidebar');
     const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    // NEW: Mobile Elements
+    const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    
     const loader = document.getElementById("loader");
     const pages = { 
         dashboard: document.getElementById("page-dashboard"), 
@@ -38,21 +44,29 @@ document.addEventListener("DOMContentLoaded", () => {
     let currentlyDisplayedMembers = [];
     let charts = {}; 
 
+    // Chart.js Setup
     Chart.register(ChartDataLabels);
     Chart.defaults.plugins.datalabels.color = '#fff';
     Chart.defaults.plugins.datalabels.font = { weight: 'bold' };
 
-    // --- CORE APP FUNCTIONS ---
+    // --- CORE FUNCTIONS ---
     const showLoader = (show) => { loader.style.display = show ? "flex" : "none"; };
+    
     const switchPage = (pageName) => {
         Object.values(pages).forEach(p => p.classList.remove('active'));
         Object.values(navLinks).forEach(a => a.classList.remove('active'));
         pages[pageName].classList.add('active');
         navLinks[pageName].classList.add('active');
         
+        // 自動關閉手機側邊欄
+        if (window.innerWidth <= 768) {
+            closeMobileSidebar();
+        }
+
         if (pageName === 'dashboard') loadDashboardData();
         if (pageName === 'members') loadMemberData();
     };
+
     const handleBackendSuccess = (message, shouldReload = false) => {
         alert(message);
         if (shouldReload) loadMemberData();
@@ -64,68 +78,52 @@ document.addEventListener("DOMContentLoaded", () => {
         showLoader(false);
     };
 
+    // --- MOBILE SIDEBAR LOGIC ---
+    const toggleMobileSidebar = () => {
+        sidebar.classList.toggle('mobile-open');
+    };
+    const closeMobileSidebar = () => {
+        sidebar.classList.remove('mobile-open');
+    };
+
     // --- RECONCILIATION PAGE LOGIC ---
     const handleFileSelect = (event) => {
         const file = event.target.files[0];
-        if (file) {
-            fileInfo.textContent = `已選擇檔案: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        } else {
-            fileInfo.textContent = '';
-        }
+        fileInfo.textContent = file ? `已選擇: ${file.name}` : '';
     };
     const startReconciliation = () => {
         const file = fileInput.files[0];
-        if (!file) {
-            alert("請先選擇一個 Excel 報表檔案。");
-            return;
-        }
+        if (!file) { alert("請先選擇檔案。"); return; }
         showLoader(true);
         const reader = new FileReader();
         reader.onload = (event) => {
             try {
                 const data = new Uint8Array(event.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(worksheet, { range: 2 });
-                if (jsonData.length === 0 || !jsonData[0]['員編']) {
-                   throw new Error("檔案格式不符或內容為空。請確認標題列位於第三列，且包含 '員編' 欄位。");
-                }
+                if (jsonData.length === 0 || !jsonData[0]['員編']) throw new Error("格式錯誤: 找不到 '員編' 欄位");
+                
                 google.script.run
                     .withSuccessHandler(handleReconciliationResult)
                     .withFailureHandler(handleBackendFailure)
                     .reconcileDues(jsonData);
             } catch (e) {
-                alert(`讀取檔案失敗: ${e.message}`);
-                showLoader(false);
+                alert(e.message); showLoader(false);
             }
-        };
-        reader.onerror = () => {
-            alert("讀取檔案時發生錯誤。");
-            showLoader(false);
         };
         reader.readAsArrayBuffer(file);
     };
     const handleReconciliationResult = (response) => {
-        if (!response.success) {
-            handleBackendFailure(new Error(response.error));
-            return;
-        }
+        if (!response.success) { handleBackendFailure(new Error(response.error)); return; }
         const { missing, extra, newMembers, specialCases } = response.results;
-        const renderTable = (tableId, data, columns) => {
-            const tbody = document.querySelector(`#${tableId} tbody`);
-            tbody.innerHTML = '';
-            if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${columns.length}">無資料</td></tr>`;
-            } else {
-                data.forEach(item => {
-                    const row = tbody.insertRow();
-                    columns.forEach(col => {
-                        const cell = row.insertCell();
-                        cell.textContent = item[col.key] !== undefined ? item[col.key] : '';
-                    });
-                });
-            }
+        const renderTable = (id, data, cols) => {
+            const tbody = document.querySelector(`#${id} tbody`);
+            tbody.innerHTML = data.length ? '' : `<tr><td colspan="${cols.length}">無資料</td></tr>`;
+            data.forEach(item => {
+                const row = tbody.insertRow();
+                cols.forEach(col => row.insertCell().textContent = item[col.key] || '');
+            });
         };
         document.getElementById('missing-count').textContent = missing.length;
         renderTable('missing-table', missing, [{key: 'id'}, {key: 'name'}, {key: 'campus'}, {key: 'unit'}]);
@@ -135,6 +133,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderTable('new-member-table', newMembers, [{key: 'id'}, {key: 'name'}, {key: 'campus'}, {key: 'amount'}]);
         document.getElementById('special-case-count').textContent = specialCases.length;
         renderTable('special-case-table', specialCases, [{key: 'id'}, {key: 'name'}, {key: 'campus'}, {key: 'amount'}]);
+        
         resultsSection.style.display = 'grid';
         showLoader(false);
         alert("核對完成！");
@@ -145,169 +144,123 @@ document.addEventListener("DOMContentLoaded", () => {
         showLoader(true);
         google.script.run.withSuccessHandler(data => { memberStore = data; renderMemberTable(memberStore); showLoader(false); }).withFailureHandler(handleBackendFailure).getMembers();
     };
-    const renderMemberTable = (membersToDisplay) => {
+    const renderMemberTable = (members) => {
         tableBody.innerHTML = "";
-        currentlyDisplayedMembers = membersToDisplay;
-        membersToDisplay.forEach(member => {
+        currentlyDisplayedMembers = members;
+        members.forEach(m => {
             const row = tableBody.insertRow();
-            row.innerHTML = `<td>${member["姓名"]||''}</td><td>${member["會員編號"]||''}</td><td>${member["院區"]||''}</td><td>${member["單位"]||''}</td><td>${member["職稱"]||''}</td><td><button class="btn-email" data-row="${member.row}" title="寄送信件">✉️</button><button class="btn-edit" data-row="${member.row}" title="編輯資料">✏️</button><button class="btn-delete" data-row="${member.row}" title="刪除會員">🗑️</button></td>`;
+            row.innerHTML = `<td>${m["姓名"]||''}</td><td>${m["會員編號"]||''}</td><td>${m["院區"]||''}</td><td>${m["單位"]||''}</td><td>${m["職稱"]||''}</td>
+            <td><button class="btn-email" data-row="${m.row}">✉️</button><button class="btn-edit" data-row="${m.row}">✏️</button><button class="btn-delete" data-row="${m.row}">🗑️</button></td>`;
         });
-        if (searchInput.value) { searchResultCount.textContent = `找到 ${membersToDisplay.length} 筆資料`; } 
-        else { searchResultCount.textContent = `共 ${memberStore.length} 筆資料`; }
+        searchResultCount.textContent = searchInput.value ? `找到 ${members.length} 筆` : `共 ${memberStore.length} 筆`;
     };
     const handleSearch = () => {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const filteredMembers = searchTerm ? memberStore.filter(member => Object.values(member).some(value => String(value).toLowerCase().includes(searchTerm))) : memberStore;
-        renderMemberTable(filteredMembers);
+        const term = searchInput.value.toLowerCase().trim();
+        renderMemberTable(term ? memberStore.filter(m => Object.values(m).some(v => String(v).toLowerCase().includes(term))) : memberStore);
     };
     const downloadExcel = () => {
-        const membersToDownload = currentlyDisplayedMembers;
-        if (membersToDownload.length === 0) { alert("沒有可下載的資料。"); return; }
-        const orderedHeaders = [ "入會日期", "退會日期", "會籍狀態", "會員編號", "會員類別", "勞工類別", "員工編號", "院區", "姓名", "職稱", "身分證字號", "生日", "手機", "通訊處", "常用E-MAIL", "院內E-mail", "臉書名稱", "line ID", "line 暱稱", "是否在會員line群", "入會單有無", "性別", "聯絡電話", "學歷/學校", "會費繳交方式" ];
-        const dataForSheet = [orderedHeaders];
-        membersToDownload.forEach(member => {
-            const row = orderedHeaders.map(header => member[header] || '');
-            dataForSheet.push(row);
-        });
-        const worksheet = XLSX.utils.aoa_to_sheet(dataForSheet);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "會員資料");
-        const fileName = searchInput.value ? `會員資料_搜尋結果.xlsx` : `全體在籍會員資料.xlsx`;
-        XLSX.writeFile(workbook, fileName);
+        if (!currentlyDisplayedMembers.length) { alert("無資料可下載"); return; }
+        const headers = [ "入會日期", "退會日期", "會籍狀態", "會員編號", "會員類別", "勞工類別", "員工編號", "院區", "姓名", "職稱", "身分證字號", "生日", "手機", "通訊處", "常用E-MAIL", "院內E-mail", "臉書名稱", "line ID", "line 暱稱", "是否在會員line群", "入會單有無", "性別", "聯絡電話", "學歷/學校", "會費繳交方式" ];
+        const data = [headers, ...currentlyDisplayedMembers.map(m => headers.map(h => m[h] || ''))];
+        XLSX.writeFile(XLSX.utils.book_new(XLSX.utils.aoa_to_sheet(data)), "會員資料.xlsx");
     };
-    const openModal = (mode = 'add', memberData = null) => {
+    const openModal = (mode, data = null) => {
         memberForm.reset();
-        modalTitle.textContent = mode === 'add' ? "新增會員" : "編輯會員資料";
+        modalTitle.textContent = mode === 'add' ? "新增會員" : "編輯會員";
         document.getElementById('form-row-id').value = '';
-        if (mode === 'edit' && memberData) { for (const key in memberData) { if (memberForm.elements[key]) { memberForm.elements[key].value = memberData[key]; } } }
+        if (mode === 'edit' && data) for (const k in data) if (memberForm.elements[k]) memberForm.elements[k].value = data[k];
         modal.style.display = "block";
     };
-    const closeModal = () => { modal.style.display = "none"; };
-    const handleFormSubmit = (event) => {
-        event.preventDefault();
+    const closeModal = () => modal.style.display = "none";
+    const handleFormSubmit = (e) => {
+        e.preventDefault();
         showLoader(true);
-        const memberObject = Object.fromEntries(new FormData(memberForm).entries());
-        const backendFunction = memberObject.row ? 'updateMember' : 'addMember';
-        google.script.run.withSuccessHandler(message => handleBackendSuccess(message, true)).withFailureHandler(handleBackendFailure)[backendFunction](memberObject);
+        const obj = Object.fromEntries(new FormData(memberForm).entries());
+        const func = obj.row ? 'updateMember' : 'addMember';
+        google.script.run.withSuccessHandler(msg => handleBackendSuccess(msg, true)).withFailureHandler(handleBackendFailure)[func](obj);
     };
-    const handleTableClick = (event) => {
-        const button = event.target.closest('button');
-        if (!button) return;
-        const { classList, dataset } = button;
-        const member = memberStore.find(m => m.row == dataset.row);
-        if (classList.contains('btn-edit')) { if (member) openModal('edit', member); } 
-        else if (classList.contains('btn-delete')) { if (confirm(`確定要刪除會員「${member["姓名"] || ''}」嗎？此操作無法復原。`)) { showLoader(true); google.script.run.withSuccessHandler(message => handleBackendSuccess(message, true)).withFailureHandler(handleBackendFailure).deleteMember(dataset.row); } } 
-        else if (classList.contains('btn-email')) { if (member) handleEmailRequest([member]); }
-    };
-    
-    // --- UPDATED EMAIL LOGIC (FIX FOR LONG LISTS) ---
-    const handleEmailRequest = (members) => {
-        if (!members || members.length === 0) { 
-            alert("沒有可寄送的會員。"); 
-            return; 
-        }
-
-        const emailOptions = [];
-        if (members.some(m => m["常用E-MAIL"])) emailOptions.push("1: 常用E-MAIL");
-        if (members.some(m => m["院內E-mail"])) emailOptions.push("2: 院內E-mail");
-
-        if (emailOptions.length === 0) { 
-            alert("選中的會員沒有可用的 E-mail 地址。"); 
-            return; 
-        }
-
-        const choice = prompt(`請選擇要使用的信箱類型：\n\n${emailOptions.join('\n')}\n\n(請輸入數字 1 或 2)`);
-        
-        let emailField = '';
-        if (choice === '1') emailField = '常用E-MAIL';
-        else if (choice === '2') emailField = '院內E-mail';
-        else { 
-            if(choice) alert("無效的選擇。"); 
-            return; 
-        }
-
-        // 提取有效 Email
-        const validEmails = members
-            .map(m => m[emailField])
-            .filter(email => email && email.includes('@') && email.trim() !== '');
-
-        if (validEmails.length === 0) { 
-            alert(`在選擇的「${emailField}」類型中，找不到有效的 E-mail 地址。`); 
-            return; 
-        }
-
-        const recipients = validEmails.join(',');
-
-        // 檢查長度：若超過 1800 字元 (瀏覽器限制約 2000)，則使用剪貼簿複製
-        if (validEmails.length > 1 && recipients.length > 1800) {
-            navigator.clipboard.writeText(recipients)
-                .then(() => {
-                    alert(`✅ 已成功提取 ${validEmails.length} 筆 Email！\n\n由於名單過長，已自動複製到「剪貼簿」。\n\n請開啟您的郵件軟體，在【密件副本】欄位按下「貼上 (Ctrl+V)」即可。`);
-                })
-                .catch(err => {
-                    console.error('複製失敗:', err);
-                    prompt(`由於名單過長且自動複製失敗，請手動複製下方框內的 Email：`, recipients);
-                });
-        } else {
-            // 長度在安全範圍內，直接開啟
-            const mailtoLink = validEmails.length > 1 ? `mailto:?bcc=${recipients}` : `mailto:${recipients}`;
-            window.open(mailtoLink, '_blank');
-        }
+    const handleTableClick = (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        const rowId = btn.dataset.row;
+        const member = memberStore.find(m => m.row == rowId);
+        if (btn.classList.contains('btn-edit')) openModal('edit', member);
+        else if (btn.classList.contains('btn-delete')) { if(confirm(`刪除 ${member['姓名']}?`)) { showLoader(true); google.script.run.withSuccessHandler(msg => handleBackendSuccess(msg, true)).deleteMember(rowId); } }
+        else if (btn.classList.contains('btn-email')) handleEmailRequest([member]);
     };
     
-    // --- DASHBOARD LOGIC ---
-    const loadDashboardData = () => { showLoader(true); google.script.run.withSuccessHandler(data => { renderDashboard(data); showLoader(false); }).withFailureHandler(handleBackendFailure).getDashboardAnalytics(); };
-    const createOrUpdateChart = (chartId, chartConfig) => { const ctx = document.getElementById(chartId).getContext('2d'); if (charts[chartId]) charts[chartId].destroy(); charts[chartId] = new Chart(ctx, chartConfig); };
-    const renderDistributionTable = (tableId, data, title) => { const table = document.getElementById(tableId); let html = `<thead><tr><th>${title}</th><th>人數</th></tr></thead><tbody>`; data.forEach(item => { html += `<tr><td>${item.key}</td><td>${item.value}</td></tr>`; }); html += `</tbody>`; table.innerHTML = html; };
+    // --- DASHBOARD ---
+    const loadDashboardData = () => { showLoader(true); google.script.run.withSuccessHandler(data => { renderDashboard(data); showLoader(false); }).getDashboardAnalytics(); };
+    const createChart = (id, config) => { 
+        const ctx = document.getElementById(id).getContext('2d'); 
+        if (charts[id]) charts[id].destroy(); 
+        charts[id] = new Chart(ctx, config); 
+    };
+    const renderTable = (id, data, title) => {
+        document.getElementById(id).innerHTML = `<thead><tr><th>${title}</th><th>人數</th></tr></thead><tbody>${data.map(i => `<tr><td>${i.key}</td><td>${i.value}</td></tr>`).join('')}</tbody>`;
+    };
     const renderDashboard = (data) => {
-        document.getElementById("kpi-total-members").textContent = data.totalActiveMembers || 0;
-        document.getElementById("kpi-new-this-month").textContent = data.newThisMonth || 0;
-        document.getElementById("kpi-leaves-this-month").textContent = data.leavesThisMonth || 0;
-        document.getElementById("kpi-avg-age").textContent = data.avgAge || "N/A";
-        const campusColors = ['#0d6efd', '#198754', '#ffc107', '#0dcaf0', '#6f42c1', '#d63384'];
-        const memberTypeColors = ['#20c997', '#6610f2', '#fd7e14', '#17a2b8'];
-        const laborTypeColors = ['#dc3545', '#fd7e14', '#ffc107', '#0dcaf0'];
-        const ageChartColor = '#17a2b8';
-        createOrUpdateChart('join-leave-month-chart', { type: 'bar', data: { labels: data.joinLeaveByMonth.map(d => d.key), datasets: [ { label: '入會人數', data: data.joinLeaveByMonth.map(d => d.joins), backgroundColor: 'rgba(40, 167, 69, 0.8)' }, { label: '退會人數', data: data.joinLeaveByMonth.map(d => d.leaves), backgroundColor: 'rgba(220, 53, 69, 0.8)' } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } }, plugins: { datalabels: { display: false } } } });
-        createOrUpdateChart('join-leave-year-chart', { type: 'bar', data: { labels: data.joinLeaveByYear.map(d => d.key), datasets: [ { label: '入會人數', data: data.joinLeaveByYear.map(d => d.joins), backgroundColor: 'rgba(0, 123, 255, 0.8)' }, { label: '退會人數', data: data.joinLeaveByYear.map(d => d.leaves), backgroundColor: 'rgba(253, 126, 20, 0.8)' } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: function(value) {if (value % 1 === 0) {return value;}} } } }, plugins: { datalabels: { display: true, anchor: 'end', align: 'top', color: '#555' } } } });
-        const pieChartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { boxWidth: 12, padding: 15 } }, datalabels: { formatter: (value, ctx) => { const total = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0); const percentage = (value / total * 100); return percentage > 3 ? percentage.toFixed(0) + '%' : ''; } } } };
-        createOrUpdateChart('campus-chart', { type: 'doughnut', data: { labels: data.campusDistribution.map(d=>d.key), datasets: [{ data: data.campusDistribution.map(d=>d.value), backgroundColor: campusColors }] }, options: pieChartOptions });
-        renderDistributionTable('campus-table', data.campusDistribution, '院區');
-        const genderData = data.genderDistribution;
-        const genderColors = genderData.map(item => { if (item.key === '男') return '#007bff'; if (item.key === '女') return '#e83e8c'; return '#6c757d'; });
-        createOrUpdateChart('gender-chart', { type: 'pie', data: { labels: genderData.map(d => d.key), datasets: [{ data: genderData.map(d => d.value), backgroundColor: genderColors }] }, options: pieChartOptions });
-        renderDistributionTable('gender-table', genderData, '性別');
-        createOrUpdateChart('member-types-chart', { type: 'pie', data: { labels: data.memberTypeDistribution.map(d=>d.key), datasets: [{ data: data.memberTypeDistribution.map(d=>d.value), backgroundColor: memberTypeColors }] }, options: pieChartOptions });
-        renderDistributionTable('member-types-table', data.memberTypeDistribution, '會員類別');
-        createOrUpdateChart('labor-types-chart', { type: 'pie', data: { labels: data.laborTypeDistribution.map(d=>d.key), datasets: [{ data: data.laborTypeDistribution.map(d=>d.value), backgroundColor: laborTypeColors }] }, options: pieChartOptions });
-        renderDistributionTable('labor-types-table', data.laborTypeDistribution, '勞工類別');
-        createOrUpdateChart('age-chart', { type: 'bar', data: { labels: data.ageDistribution.map(d => d.key), datasets: [{ label: '人數', data: data.ageDistribution.map(d => d.value), backgroundColor: ageChartColor }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: true, anchor: 'end', align: 'end', color: '#fff' } } } });
+        document.getElementById("kpi-total-members").textContent = data.totalActiveMembers;
+        document.getElementById("kpi-new-this-month").textContent = data.newThisMonth;
+        document.getElementById("kpi-leaves-this-month").textContent = data.leavesThisMonth;
+        document.getElementById("kpi-avg-age").textContent = data.avgAge;
+        
+        const pieOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } } };
+        
+        createChart('join-leave-month-chart', { type: 'bar', data: { labels: data.joinLeaveByMonth.map(d=>d.key), datasets: [{label:'入會',data:data.joinLeaveByMonth.map(d=>d.joins),backgroundColor:'#28a745'},{label:'退會',data:data.joinLeaveByMonth.map(d=>d.leaves),backgroundColor:'#dc3545'}] }, options: {maintainAspectRatio:false} });
+        createChart('join-leave-year-chart', { type: 'bar', data: { labels: data.joinLeaveByYear.map(d=>d.key), datasets: [{label:'入會',data:data.joinLeaveByYear.map(d=>d.joins),backgroundColor:'#007bff'},{label:'退會',data:data.joinLeaveByYear.map(d=>d.leaves),backgroundColor:'#fd7e14'}] }, options: {maintainAspectRatio:false} });
+        createChart('campus-chart', { type: 'doughnut', data: { labels: data.campusDistribution.map(d=>d.key), datasets: [{ data: data.campusDistribution.map(d=>d.value), backgroundColor: ['#0d6efd','#198754','#ffc107','#0dcaf0','#6f42c1'] }] }, options: pieOpts });
+        renderTable('campus-table', data.campusDistribution, '院區');
+        createChart('gender-chart', { type: 'pie', data: { labels: data.genderDistribution.map(d=>d.key), datasets: [{ data: data.genderDistribution.map(d=>d.value), backgroundColor: ['#007bff','#e83e8c'] }] }, options: pieOpts });
+        renderTable('gender-table', data.genderDistribution, '性別');
+        createChart('member-types-chart', { type: 'pie', data: { labels: data.memberTypeDistribution.map(d=>d.key), datasets: [{ data: data.memberTypeDistribution.map(d=>d.value), backgroundColor: ['#20c997','#6610f2'] }] }, options: pieOpts });
+        renderTable('member-types-table', data.memberTypeDistribution, '會員類別');
+        createChart('labor-types-chart', { type: 'pie', data: { labels: data.laborTypeDistribution.map(d=>d.key), datasets: [{ data: data.laborTypeDistribution.map(d=>d.value), backgroundColor: ['#dc3545','#fd7e14'] }] }, options: pieOpts });
+        renderTable('labor-types-table', data.laborTypeDistribution, '勞工類別');
+        createChart('age-chart', { type: 'bar', data: { labels: data.ageDistribution.map(d=>d.key), datasets: [{ label:'人數', data: data.ageDistribution.map(d=>d.value), backgroundColor: '#17a2b8' }] }, options: { maintainAspectRatio:false, plugins:{legend:{display:false}} } });
     };
 
-    // --- INITIALIZATION & EVENT LISTENERS ---
-    const initialize = () => {
-        toggleBtn.addEventListener('click', () => { sidebar.classList.toggle('collapsed'); localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed')); setTimeout(() => window.dispatchEvent(new Event('resize')), 300); });
-        if (localStorage.getItem('sidebarCollapsed') === 'true') sidebar.classList.add('collapsed');
-        navLinks.dashboard.addEventListener('click', (e) => { e.preventDefault(); switchPage('dashboard'); });
-        navLinks.members.addEventListener('click', (e) => { e.preventDefault(); switchPage('members'); });
-        navLinks.reconciliation.addEventListener('click', (e) => { e.preventDefault(); switchPage('reconciliation'); });
-        google.script.run.withSuccessHandler(url => { if (url) navLinks.backend.href = url; }).getSheetUrl();
-        
-        addMemberBtn.addEventListener('click', () => openModal('add'));
-        emailAllBtn.addEventListener('click', () => handleEmailRequest(currentlyDisplayedMembers));
-        downloadBtn.addEventListener('click', downloadExcel);
-        modalCloseBtn.addEventListener('click', closeModal);
-        window.addEventListener('click', (event) => { if (event.target == modal) closeModal(); });
-        memberForm.addEventListener('submit', handleFormSubmit);
-        tableBody.addEventListener('click', handleTableClick);
-        searchInput.addEventListener('input', handleSearch);
-        
-        fileInput.addEventListener('change', handleFileSelect);
-        reconcileBtn.addEventListener('click', startReconciliation);
-
-        switchPage('dashboard');
+    // --- EMAIL LOGIC ---
+    const handleEmailRequest = (members) => {
+        if (!members.length) return alert("無會員資料");
+        const type = prompt("選擇信箱: 1:常用E-MAIL, 2:院內E-mail", "1");
+        if(type!=='1'&&type!=='2') return;
+        const field = type==='1'?'常用E-MAIL':'院內E-mail';
+        const emails = members.map(m=>m[field]).filter(e=>e&&e.includes('@'));
+        if(!emails.length) return alert("無有效Email");
+        const str = emails.join(',');
+        if(str.length>1800) {
+            navigator.clipboard.writeText(str).then(()=>alert("名單過長，已複製到剪貼簿")).catch(()=>prompt("複製:",str));
+        } else {
+            window.open(`mailto:?bcc=${str}`);
+        }
     };
 
-    initialize();
+    // --- INIT ---
+    toggleBtn.addEventListener('click', () => { sidebar.classList.toggle('collapsed'); localStorage.setItem('sb', sidebar.classList.contains('collapsed')); });
+    if (localStorage.getItem('sb') === 'true') sidebar.classList.add('collapsed');
+    
+    // NEW: Mobile Events
+    mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
+    sidebarOverlay.addEventListener('click', closeMobileSidebar);
+
+    navLinks.dashboard.addEventListener('click', () => switchPage('dashboard'));
+    navLinks.members.addEventListener('click', () => switchPage('members'));
+    navLinks.reconciliation.addEventListener('click', () => switchPage('reconciliation'));
+    google.script.run.withSuccessHandler(url => navLinks.backend.href = url).getSheetUrl();
+    
+    addMemberBtn.addEventListener('click', () => openModal('add'));
+    emailAllBtn.addEventListener('click', () => handleEmailRequest(currentlyDisplayedMembers));
+    downloadBtn.addEventListener('click', downloadExcel);
+    modalCloseBtn.addEventListener('click', closeModal);
+    window.addEventListener('click', e => { if (e.target == modal) closeModal(); });
+    memberForm.addEventListener('submit', handleFormSubmit);
+    tableBody.addEventListener('click', handleTableClick);
+    searchInput.addEventListener('input', handleSearch);
+    
+    fileInput.addEventListener('change', handleFileSelect);
+    reconcileBtn.addEventListener('click', startReconciliation);
+
+    switchPage('dashboard');
 });
 </script>
