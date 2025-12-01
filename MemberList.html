@@ -1,0 +1,75 @@
+<!-- =============================================================== -->
+<!-- MEMBER LIST VIEW (MemberList.html) - WITH DOWNLOAD & COUNT -->
+<!-- =============================================================== -->
+<header class="page-header">
+  <h1>會員管理 (僅顯示在籍會員)</h1>
+  <div>
+    <!-- NEW: Download CSV Button -->
+    <button id="download-csv-btn" class="btn-export">📄 下載資料</button>
+    <button id="email-all-btn" class="btn-secondary">✉️ 寄信給所有會員</button>
+    <button id="add-member-btn" class="btn-primary">＋ 新增會員</button>
+  </div>
+</header>
+
+<!-- Search and Controls -->
+<div class="controls-container">
+  <div class="search-container">
+    <input type="search" id="search-input" placeholder="🔍 搜尋姓名、會員編號、手機...">
+  </div>
+  <!-- NEW: Search result count display -->
+  <div class="search-info">
+    <span id="search-result-count"></span>
+  </div>
+</div>
+
+<!-- Member Table -->
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>姓名</th>
+        <th>會員編號</th>
+        <th>院區</th>
+        <th>單位</th>
+        <th>職稱</th>
+        <th style="width: 200px;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="member-table-body">
+      <!-- Member rows will be injected by JavaScript -->
+    </tbody>
+  </table>
+</div>
+
+<!-- Add/Edit Member Modal (No changes here) -->
+<div id="member-modal" class="modal">
+    <div class="modal-content">
+        <span class="modal-close-btn">&times;</span>
+        <h2 id="modal-title">新增會員</h2>
+        <form id="member-form">
+            <input type="hidden" name="row" id="form-row-id">
+            <div class="form-grid">
+                <div><label for="姓名">姓名</label><input type="text" id="姓名" name="姓名" required></div>
+                <div><label for="會員編號">會員編號</label><input type="text" id="會員編號" name="會員編號" required></div>
+                <div><label for="院區">院區</label><input type="text" id="院區" name="院區"></div>
+                <div><label for="單位">單位</label><input type="text" id="單位" name="單位"></div>
+                <div><label for="職稱">職稱</label><input type="text" id="職稱" name="職稱"></div>
+                <div><label for="生日">生日</label><input type="date" id="生日" name="生日"></div>
+                <div><label for="性別">性別</label><select id="性別" name="性別"><option>男</option><option>女</option><option>其他</option></select></div>
+                <div><label for="身分證字號">身分證字號</label><input type="text" id="身分證字號" name="身分證字號"></div>
+                <div><label for="手機">手機</label><input type="tel" id="手機" name="手機"></div>
+                <div><label for="聯絡電話">聯絡電話 (備用)</label><input type="tel" id="聯絡電話" name="聯絡電話"></div>
+                <div><label for="常用E-MAIL">常用E-MAIL</label><input type="email" id="常用E-MAIL" name="常用E-MAIL"></div>
+                <div><label for="院內E-mail">院內E-mail</label><input type="email" id="院內E-mail" name="院內E-mail"></div>
+                <div><label for="會員類別">會員類別</label><input type="text" id="會員類別" name="會員類別" placeholder="例如: 一般會員, 贊助會員"></div>
+                <div><label for="勞工類別">勞工類別</label><input type="text" id="勞工類別" name="勞工類別"></div>
+                <div><label for="員工編號">員工編號</label><input type="text" id="員工編號" name="員工編號"></div>
+                <div><label for="帳號後五碼">帳號後五碼</label><input type="text" id="帳號後五碼" name="帳號後五碼" pattern="[0-9]{5}" title="請輸入數字格式的後五碼"></div>
+                <div class="full-width"><label for="通訊處">通訊處</label><input type="text" id="通訊處" name="通訊處"></div>
+                <div class="full-width form-actions">
+                    <button type="submit" class="btn-primary">儲存資料</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,79 @@
+<!-- =============================================================== -->
+<!-- RECONCILIATION VIEW (Reconciliation.html) - NEW FILE -->
+<!-- =============================================================== -->
+<header class="page-header">
+  <h1>帳務核對</h1>
+</header>
+
+<div class="reconciliation-container">
+  <div class="upload-section card">
+    <h3>上傳月費報表</h3>
+    <p>請選擇從醫院系統下載的 Excel (.xlsx 或 .xls) 報表檔案，系統將自動與目前的會員名冊進行比對。</p>
+    <div class="upload-controls">
+      <input type="file" id="file-input" accept=".xlsx, .xls">
+      <button id="reconcile-btn" class="btn-primary">開始核對</button>
+    </div>
+    <pre id="file-info"></pre>
+  </div>
+
+  <div id="results-section" class="results-section" style="display: none;">
+    <h2>核對結果</h2>
+
+    <!-- Result Card 1: Missing from Report -->
+    <div class="result-card card-danger">
+      <div class="card-header">
+        <h3>【帳務異常】應扣款但未在報表內之在籍會員</h3>
+        <span id="missing-count" class="count-badge">0</span>
+      </div>
+      <div class="table-container">
+        <table id="missing-table">
+          <thead><tr><th>員編</th><th>姓名</th><th>院區</th><th>單位</th></tr></thead>
+          <tbody><!-- Results will be injected here --></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Result Card 2: Should Not Be in Report -->
+    <div class="result-card card-warning">
+      <div class="card-header">
+        <h3>【帳務異常】已退會但仍在報表內之人員</h3>
+        <span id="extra-count" class="count-badge">0</span>
+      </div>
+      <div class="table-container">
+        <table id="extra-table">
+          <thead><tr><th>員編</th><th>姓名</th><th>院區</th><th>金額</th></tr></thead>
+          <tbody><!-- Results will be injected here --></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Result Card 3: New Members -->
+    <div class="result-card card-info">
+      <div class="card-header">
+        <h3>【入會繳費】報表內新入會繳費人員 (1450元)</h3>
+        <span id="new-member-count" class="count-badge">0</span>
+      </div>
+      <div class="table-container">
+        <table id="new-member-table">
+          <thead><tr><th>員編</th><th>姓名</th><th>院區</th><th>金額</th></tr></thead>
+          <tbody><!-- Results will be injected here --></tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Result Card 4: Special Case Members -->
+    <div class="result-card card-info">
+      <div class="card-header">
+        <h3>【入會繳費】報表內帶病入會繳費人員 (1700元)</h3>
+        <span id="special-case-count" class="count-badge">0</span>
+      </div>
+      <div class="table-container">
+        <table id="special-case-table">
+          <thead><tr><th>員編</th><th>姓名</th><th>院區</th><th>金額</th></tr></thead>
+          <tbody><!-- Results will be injected here --></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

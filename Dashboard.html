@@ -1,0 +1,93 @@
+<!-- =============================================================== -->
+<!-- DASHBOARD VIEW (Dashboard.html) - FINAL AESTHETIC REVISION -->
+<!-- =============================================================== -->
+<header class="page-header">
+  <h1>儀表板</h1>
+</header>
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <h3>會員總數</h3>
+    <p id="kpi-total-members">0</p>
+  </div>
+  <div class="kpi-card">
+    <h3>本月入會</h3>
+    <p id="kpi-new-this-month">0</p>
+  </div>
+  <div class="kpi-card">
+    <h3>本月退會</h3>
+    <p id="kpi-leaves-this-month">0</p>
+  </div>
+  <div class="kpi-card">
+    <h3>會員平均年齡</h3>
+    <p id="kpi-avg-age">0</p>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="chart-grid">
+
+  <div class="chart-container full-width">
+    <h3>近24個月出入會人數趨勢</h3>
+    <div class="chart-wrapper">
+      <canvas id="join-leave-month-chart"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-container full-width">
+    <h3>每年出入會人數統計</h3>
+    <div class="chart-wrapper">
+      <canvas id="join-leave-year-chart"></canvas>
+    </div>
+  </div>
+  
+  <div class="chart-container with-table">
+    <h3>各院區人數分佈</h3>
+    <div class="chart-wrapper pie-chart-wrapper">
+      <canvas id="campus-chart"></canvas>
+    </div>
+    <div class="table-wrapper">
+      <table id="campus-table"></table>
+    </div>
+  </div>
+
+  <!-- Container for Gender Chart and its new Table -->
+  <div class="chart-container with-table">
+    <h3>性別比例</h3>
+    <div class="chart-wrapper pie-chart-wrapper">
+      <canvas id="gender-chart"></canvas>
+    </div>
+    <div class="table-wrapper">
+      <table id="gender-table"></table>
+    </div>
+  </div>
+
+  <div class="chart-container with-table">
+    <h3>會員類別分佈</h3>
+    <div class="chart-wrapper pie-chart-wrapper">
+      <canvas id="member-types-chart"></canvas>
+    </div>
+     <div class="table-wrapper">
+      <table id="member-types-table"></table>
+    </div>
+  </div>
+  
+  <div class="chart-container with-table">
+    <h3>勞工類別分佈</h3>
+    <div class="chart-wrapper pie-chart-wrapper">
+      <canvas id="labor-types-chart"></canvas>
+    </div>
+     <div class="table-wrapper">
+      <table id="labor-types-table"></table>
+    </div>
+  </div>
+
+  <div class="chart-container">
+    <h3>年齡分佈</h3>
+    <div class="chart-wrapper">
+      <canvas id="age-chart"></canvas>
+    </div>
+  </div>
+
+</div>  
