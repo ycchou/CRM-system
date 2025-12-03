@@ -1,0 +1,35 @@
+<!-- =============================================================== -->
+<!-- ADMIN USERS VIEW (AdminUsers.html) - 管理員專用 -->
+<!-- =============================================================== -->
+<header class="page-header">
+  <h1>系統帳號管理</h1>
+  <div>
+    <button id="btn-refresh-admin" class="btn-secondary">🔄 重新整理</button>
+  </div>
+</header>
+
+<div class="card">
+  <p class="text-secondary">
+    說明：<br>
+    1. <b>Pending (待審核)</b>：新註冊帳號，無法登入，請核准並分配權限。<br>
+    2. <b>Admin (管理員)</b>：擁有所有權限 (含管理帳號)。<br>
+    3. <b>Editor (編輯者)</b>：可查看、新增、修改會員資料。<br>
+    4. <b>Viewer (檢視者)</b>：僅能查看資料，無法修改。<br>
+  </p>
+</div>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>姓名 / Email</th>
+        <th>目前權限</th>
+        <th style="width: 250px;">權限操作</th>
+        <th style="width: 80px;">刪除</th>
+      </tr>
+    </thead>
+    <tbody id="tbody-admin">
+      <!-- User rows will be injected here -->
+    </tbody>
+  </table>
+</div>
