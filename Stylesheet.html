@@ -17,100 +17,93 @@
     --border-color: #dee2e6;
     --sidebar-width: 240px;
     --sidebar-width-collapsed: 65px;
-    --mobile-header-height: 60px; /* 手機版 Header 高度 */
+    --mobile-header-height: 60px;
   }
 
-  /* --- General Styles --- */
-  * { box-sizing: border-box; } /* 確保 padding 不會撐開寬度 */
+  * { box-sizing: border-box; }
   
   body { 
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     margin: 0; 
     background-color: var(--background-color); 
     color: var(--text-color); 
-    font-size: 16px; /* 基礎字體加大 */
+    font-size: 16px;
   }
-  .app-container { display: flex; height: 100vh; overflow: hidden; } /* 防止雙重卷軸 */
   
-  /* --- Mobile Header (Hidden on Desktop) --- */
+  .text-secondary { color: #6c757d; font-size: 0.9em; }
+  .d-none { display: none !important; }
+
+  /* --- AUTH PAGES --- */
+  #auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #e9ecef; padding: 20px; }
+  .auth-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+  .auth-card h3 { margin-bottom: 20px; color: var(--primary-color); }
+  .auth-card input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ced4da; border-radius: 5px; font-size: 16px; }
+  .auth-card button { width: 100%; padding: 12px; font-size: 16px; font-weight: bold; }
+  .auth-link { display: block; margin-top: 15px; color: var(--primary-color); cursor: pointer; text-decoration: underline;}
+
+  /* --- APP CONTAINER --- */
+  .app-container { display: none; height: 100vh; overflow: hidden; }
   .mobile-header { display: none; }
 
   /* --- Sidebar --- */
-  .sidebar { 
-    width: var(--sidebar-width); 
-    background-color: var(--sidebar-bg); 
-    color: var(--sidebar-text); 
-    display: flex; 
-    flex-direction: column; 
-    transition: all 0.3s ease; 
-    position: relative; 
-    flex-shrink: 0; 
-    z-index: 1001; /* 確保在遮罩之上 */
-  }
+  .sidebar { width: var(--sidebar-width); background-color: var(--sidebar-bg); color: var(--sidebar-text); display: flex; flex-direction: column; transition: all 0.3s ease; position: relative; flex-shrink: 0; z-index: 1001; }
   .sidebar-header { padding: 20px; text-align: center; border-bottom: 1px solid #495057; position: relative; height: 70px;}
   .sidebar-header h3 { margin: 0; line-height: 30px;}
   .sidebar ul { list-style: none; padding: 0; margin: 20px 0; }
   .sidebar ul li a { display: flex; align-items: center; padding: 15px 20px; color: var(--sidebar-text); text-decoration: none; cursor: pointer; white-space: nowrap; overflow: hidden; border-left: 3px solid transparent; }
   .sidebar ul li a:hover { background-color: #495057; }
   .sidebar ul li a.active { background-color: var(--primary-color); border-left: 3px solid #f8f9fa; }
-  
-  /* Toggle Button (Desktop) */
+  .user-info-box { padding: 15px; border-top: 1px solid #495057; margin-top: auto; font-size: 0.9rem; text-align: center; }
+  .user-info-box span { display: block; margin-bottom: 5px; color: #ced4da; }
   #sidebar-toggle-btn { position: absolute; right: -15px; top: 20px; width: 30px; height: 30px; border-radius: 50%; background-color: var(--primary-color); color: white; border: 2px solid var(--background-color); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; padding: 0; }
   #sidebar-toggle-btn .icon-expand { display: none; }
-
-  /* Collapsed Sidebar (Desktop) */
   .sidebar.collapsed { width: var(--sidebar-width-collapsed); }
-  .sidebar.collapsed .sidebar-header h3, .sidebar.collapsed .nav-text { opacity: 0; pointer-events: none; display: none;}
+  .sidebar.collapsed .sidebar-header h3, .sidebar.collapsed .nav-text, .sidebar.collapsed .user-info-box { opacity: 0; pointer-events: none; display: none;}
   .sidebar.collapsed #sidebar-toggle-btn .icon-collapse { display: none; }
   .sidebar.collapsed #sidebar-toggle-btn .icon-expand { display: block; }
-
-  /* Overlay (Hidden by default) */
   .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
 
   /* --- Main Content --- */
-  .main-content { 
-    flex-grow: 1; 
-    padding: 20px; 
-    overflow-y: auto; 
-    height: 100vh; 
-    position: relative;
-    background-color: var(--background-color);
-  }
+  .main-content { flex-grow: 1; padding: 20px; overflow-y: auto; height: 100vh; position: relative; background-color: var(--background-color); }
   .page { display: none; padding-bottom: 40px; }
   .page.active { display: block; animation: fadeIn 0.3s; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
   .page-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; gap: 15px; }
   .page-header h1 { margin: 0; font-size: 1.5rem; }
   
-  /* Buttons */
-  .btn-primary, .btn-secondary, .btn-export { padding: 10px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; color: white; margin-bottom: 5px; }
+  /* Buttons & Badges */
+  .btn-primary, .btn-secondary, .btn-export, .btn-danger { padding: 10px 16px; border: none; border-radius: 5px; cursor: pointer; font-size: 15px; color: white; margin-bottom: 5px; }
   .btn-primary { background-color: var(--primary-color); }
   .btn-primary:hover { background-color: var(--primary-hover); }
   .btn-secondary { background-color: var(--secondary-color); }
   .btn-secondary:hover { background-color: var(--secondary-hover); }
   .btn-export { background-color: var(--export-color); }
   .btn-export:hover { background-color: var(--export-hover); }
-  .btn-edit, .btn-delete, .btn-email { color: white; padding: 8px 12px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 14px; }
+  .btn-danger { background-color: var(--danger-color); }
+  .btn-edit, .btn-delete, .btn-email, .btn-sm { color: white; padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; margin: 2px; font-size: 13px; }
   .btn-edit { background-color: #ffc107; color: #000; }
   .btn-delete { background-color: #dc3545; }
   .btn-email { background-color: #17a2b8; }
+  .btn-outline-secondary { border: 1px solid #6c757d; color: #6c757d; background: none; }
+  .btn-outline-secondary:hover { background: #6c757d; color: white; }
+  .btn-sm { font-size: 12px; padding: 4px 8px; }
 
-  /* Controls & Search */
+  /* ROLE BADGES */
+  .badge { padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; color: white; }
+  .role-Admin { background-color: #dc3545; }
+  .role-Editor { background-color: #0d6efd; }
+  .role-Viewer { background-color: #6c757d; }
+  .role-Pending { background-color: #ffc107; color: black; }
+
+  /* Tables & Layouts */
   .controls-container { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px; }
   .search-container { flex-grow: 1; min-width: 250px; }
   .search-container input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 16px; }
-  .search-info { color: #6c757d; font-size: 0.9em; flex-shrink: 0; }
-
-  /* Table */
-  .table-container { background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow-x: auto; /* 關鍵：允許橫向捲動 */ -webkit-overflow-scrolling: touch; }
-  table { width: 100%; border-collapse: collapse; min-width: 600px; /* 防止表格在小螢幕被過度壓縮 */ }
+  .table-container { background-color: var(--card-bg); border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
   th, td { text-align: left; padding: 12px 15px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
   th { background-color: #f8f9fa; font-weight: 600; }
-  tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background-color: #f1f1f1; }
-
-  /* Modal */
   .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
   .modal-content { background-color: var(--card-bg); margin: 5% auto; padding: 25px; border-radius: 8px; width: 90%; max-width: 800px; animation: slide-down 0.4s ease-out;}
   .modal-close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -120,96 +113,23 @@
   label { display: block; margin-bottom: 5px; font-weight: 500; }
   input, select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-size: 16px; margin-top: 5px; }
   @keyframes slide-down { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
-  /* Loader */
   .loader-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 3000; justify-content: center; align-items: center; }
   .loader-spinner { border: 6px solid #f3f3f3; border-top: 6px solid var(--primary-color); border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-  /* --- Dashboard Grid (Updated with Large Font & Colors) --- */
-  .kpi-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-    gap: 20px; 
-    margin-bottom: 30px; 
-  }
-
-  /* KPI 卡片基礎樣式 */
-  .kpi-card { 
-    background-color: var(--card-bg); 
-    padding: 20px; 
-    border-radius: 8px; 
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
-    text-align: center; 
-    
-    /* 預設邊框顏色 (藍色 - 會員總數) */
-    border-left: 5px solid var(--primary-color); 
-    
-    /* 讓卡片內容垂直置中 */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-
-  /* 卡片標題樣式 (例如：本月入會) */
-  .kpi-card h3 { 
-    margin: 0; 
-    font-size: 1.1rem; 
-    color: #6c757d; /* 灰色字體，讓下方的數字更突出 */
-    font-weight: 600;
-  }
-
-  /* 卡片數字樣式 (例如：125) - 這裡改大了 */
-  .kpi-card p { 
-    margin: 10px 0 0 0; 
-    font-size: 3.5rem;  /* 電腦版超大字體 */
-    font-weight: 800;   /* 特粗體 */
-    color: #333;        /* 深黑色 */
-    line-height: 1.2;
-  }
-
-  /* --- 卡片邊框顏色設定 (對應圖表顏色) --- */
-  
-  /* 第 2 張：本月入會 (綠色) */
-  .kpi-card:nth-child(2) { 
-    border-left-color: #28a745; 
-  }
-
-  /* 第 3 張：本月退會 (紅色) */
-  .kpi-card:nth-child(3) { 
-    border-left-color: #dc3545; 
-  }
-
-  /* 第 4 張：平均年齡 (黃色) */
-  .kpi-card:nth-child(4) { 
-    border-left-color: #ffc107; 
-  }
-
-  /* --- Chart Grid --- */
-  .chart-grid { 
-    display: grid; 
-    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); 
-    gap: 20px; 
-  }
-  .chart-container { 
-    background-color: var(--card-bg); 
-    padding: 15px; 
-    border-radius: 8px; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-    display: flex; flex-direction: column;
-  }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+  .kpi-card { background-color: var(--card-bg); padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; border-left: 5px solid var(--primary-color); display: flex; flex-direction: column; justify-content: center; }
+  .kpi-card h3 { margin: 0; font-size: 1.1rem; color: #6c757d; font-weight: 600; }
+  .kpi-card p { margin: 10px 0 0 0; font-size: 3.5rem; font-weight: 800; color: #333; line-height: 1.2; }
+  .kpi-card:nth-child(2) { border-left-color: #28a745; }
+  .kpi-card:nth-child(3) { border-left-color: #dc3545; }
+  .kpi-card:nth-child(4) { border-left-color: #ffc107; }
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
+  .chart-container { background-color: var(--card-bg); padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; flex-direction: column; }
   .chart-container.full-width { grid-column: 1 / -1; min-height: 400px; }
-  .chart-container.with-table { height: auto; }
-  .chart-container h3 { margin: 0 0 15px; text-align: center; font-size: 1.1rem; }
   .chart-wrapper { position: relative; width: 100%; flex-grow: 1; min-height: 250px; }
   .pie-chart-wrapper { max-height: 250px; margin: 0 auto; width: 100%; }
   .table-wrapper { margin-top: 20px; width: 100%; max-height: 200px; overflow-y: auto; }
-  .table-wrapper table { width: 100%; min-width: auto; } /* Pie chart tables don't need min-width */
-  .table-wrapper th, .table-wrapper td { padding: 8px 12px; }
-
-  /* Reconciliation */
   .card { background-color: var(--card-bg); padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-  .upload-section p { color: #6c757d; line-height: 1.6; }
   .upload-controls { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
   .results-section { display: grid; gap: 20px; }
   .result-card { border-left: 5px solid; }
@@ -223,67 +143,21 @@
   .card-info { border-left-color: var(--info-color); }
   .card-info .count-badge { border-color: var(--info-color); color: #055160; }
 
-
-  /* ========================================= */
-  /* === MOBILE RESPONSIVE STYLES (手機版) === */
-  /* ========================================= */
   @media (max-width: 768px) {
-    /* Layout Reset */
     .app-container { flex-direction: column; }
-    
-    /* Show Mobile Header */
-    .mobile-header { 
-        display: flex; align-items: center; 
-        background-color: var(--sidebar-bg); color: white; 
-        padding: 0 15px; height: var(--mobile-header-height); 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        position: fixed; top: 0; left: 0; width: 100%; z-index: 1002;
-    }
-    .hamburger-btn { background: none; border: none; color: white; font-size: 24px; cursor: pointer; padding: 5px 10px; margin-right: 10px;}
-    .mobile-title { font-size: 1.2rem; font-weight: bold; }
-
-    /* Sidebar: Off-canvas style */
-    .sidebar { 
-        position: fixed; top: 0; left: 0; height: 100%; 
-        width: 260px; /* 稍微寬一點方便點擊 */
-        transform: translateX(-100%); /* 預設隱藏在螢幕左側 */
-        padding-top: var(--mobile-header-height); /* 避開 Header */
-        box-shadow: 4px 0 10px rgba(0,0,0,0.2);
-    }
-    .sidebar.mobile-open { transform: translateX(0); } /* 打開 */
-    .sidebar-header { display: none; } /* 手機版不顯示原本的側邊欄標題 */
-    
-    /* Toggle overlay when sidebar is open */
+    .mobile-header { display: flex; align-items: center; background-color: var(--sidebar-bg); color: white; padding: 0 15px; height: var(--mobile-header-height); box-shadow: 0 2px 5px rgba(0,0,0,0.2); position: fixed; top: 0; left: 0; width: 100%; z-index: 1002; }
+    .sidebar { position: fixed; top: 0; left: 0; height: 100%; width: 260px; transform: translateX(-100%); padding-top: var(--mobile-header-height); box-shadow: 4px 0 10px rgba(0,0,0,0.2); }
+    .sidebar.mobile-open { transform: translateX(0); }
+    .sidebar-header { display: none; }
     .sidebar.mobile-open + #sidebar-overlay { display: block; }
-    
-    /* Main Content Adjustments */
-    .main-content { 
-        margin-top: var(--mobile-header-height); 
-        padding: 15px; 
-        height: auto; /* Allow natural scroll */
-    }
-
-    /* Controls Stack Vertically */
+    .main-content { margin-top: var(--mobile-header-height); padding: 15px; height: auto; }
     .page-header { flex-direction: column; align-items: stretch; gap: 10px; }
-    .page-header div { display: flex; flex-direction: column; gap: 10px; } /* 按鈕垂直堆疊 */
     .controls-container { flex-direction: column; align-items: stretch; }
-    
-    /* Modal Full Screen */
     .modal-content { width: 95%; margin: 10% auto; padding: 20px; }
-    .form-grid { grid-template-columns: 1fr; } /* 表單變單欄 */
-
-    /* Dashboard Adjustments */
-    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; } /* KPI 變兩欄 */
-    .chart-grid { grid-template-columns: 1fr; } /* 圖表變單欄 */
+    .form-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .chart-grid { grid-template-columns: 1fr; }
     .chart-container.full-width { height: auto; min-height: 350px; }
-    .chart-wrapper { min-height: 250px; }
-
-    /* 手機版 KPI 數字稍微縮小，避免過大 */
-    .kpi-card p {
-        font-size: 2.5rem; 
-    }
-
-    /* Hide desktop toggle button */
     #sidebar-toggle-btn { display: none; }
   }
 </style>
