@@ -1,35 +1,49 @@
-<!-- --- START OF FILE index.html --- -->
-
 <!DOCTYPE html>
 <html>
 <head>
     <base target="_top">
-    <title>工會會員管理系統</title>
+    <title>工會會員管理系統 CRM</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    
-    <!-- 引入 Chart.js 主程式庫 -->
+    <!-- 引入 Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- 引入 Chart.js 資料標籤插件 -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <!-- 引入 SheetJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <?!= include('Stylesheet'); ?> 
 </head>
 <body>
-    <div class="app-container">
+    <!-- 1. 登入/註冊區塊 -->
+    <div id="auth-container">
+        <!-- 登入表單 -->
+        <div id="form-login" class="auth-card">
+            <h3>工會 CRM 登入</h3>
+            <input type="email" id="login-email" placeholder="Email" required>
+            <input type="password" id="login-password" placeholder="密碼" required>
+            <button id="btn-login" class="btn-primary">登入系統</button>
+            <a id="link-to-register" class="auth-link">沒有帳號？申請註冊</a>
+        </div>
+        <!-- 註冊表單 -->
+        <div id="form-register" class="auth-card d-none">
+            <h3>申請新帳號</h3>
+            <input type="text" id="reg-name" placeholder="您的姓名" required>
+            <input type="email" id="reg-email" placeholder="Email" required>
+            <input type="password" id="reg-password" placeholder="設定密碼" required>
+            <button id="btn-register" class="btn-export">送出申請</button>
+            <a id="link-to-login" class="auth-link">返回登入</a>
+        </div>
+    </div>
+
+    <!-- 2. 主應用程式區塊 (登入後顯示) -->
+    <div id="app-container" class="app-container">
         
-        <!-- NEW: 手機版專用的頂部導覽列 (只有手機會顯示) -->
         <div class="mobile-header">
             <button id="mobile-menu-btn" class="hamburger-btn">☰</button>
-            <span class="mobile-title">CRM 系統</span>
+            <span class="mobile-title">工會 CRM</span>
         </div>
 
-        <!-- 左側導覽列 -->
         <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h3>CRM 系統</h3>
-                <!-- 電腦版縮放按鈕 -->
                 <button id="sidebar-toggle-btn" title="收合側邊欄">
                     <span class="icon-collapse">&laquo;</span>
                     <span class="icon-expand">&raquo;</span>
@@ -39,14 +53,19 @@
                 <li><a id="nav-dashboard">📊 <span class="nav-text">儀表板</span></a></li>
                 <li><a id="nav-members">👥 <span class="nav-text">會員管理</span></a></li>
                 <li><a id="nav-reconciliation">🧾 <span class="nav-text">帳務核對</span></a></li>
+                <!-- NEW: Admin Link (Hidden by default) -->
+                <li id="nav-admin-li" class="d-none"><a id="nav-admin" style="color: #ffc107;">👑 <span class="nav-text">管理後台</span></a></li>
                 <li><a id="nav-backend" target="_blank">📄 <span class="nav-text">資料後台</span></a></li>
             </ul>
+            <!-- 使用者資訊與登出 -->
+            <div class="user-info-box">
+                <span id="display-username">User</span>
+                <button id="btn-logout" class="btn-danger" style="width:100%; padding:5px;">登出</button>
+            </div>
         </nav>
         
-        <!-- NEW: 手機版側邊欄打開時的黑色遮罩 -->
         <div id="sidebar-overlay" class="sidebar-overlay"></div>
 
-        <!-- 右側主內容區 -->
         <main class="main-content">
             <div id="loader" class="loader-overlay"><div class="loader-spinner"></div></div>
             
@@ -60,6 +79,11 @@
 
             <div id="page-reconciliation" class="page">
                 <?!= include('Reconciliation'); ?>
+            </div>
+
+            <!-- NEW: Admin Page -->
+            <div id="page-admin" class="page">
+                <?!= include('AdminUsers'); ?>
             </div>
         </main>
     </div>
