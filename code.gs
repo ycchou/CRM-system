@@ -1,5 +1,5 @@
 /* =========================================================================
-   CRM 系統後端邏輯 (Code.gs) - 含 Admin 管理功能
+   CRM 系統後端邏輯 (Code.gs) - 含 Admin 管理功能 & 試算表選單跳轉
    ========================================================================= */
 
 const CONFIG = {
@@ -10,7 +10,7 @@ const CONFIG = {
   }
 };
 
-/* --- 1. WEB APP 基礎設定 --- */
+/* --- 1. WEB APP 基礎設定 & 試算表選單 --- */
 
 function doGet(e) {
   return HtmlService.createTemplateFromFile('index')
@@ -26,6 +26,30 @@ function include(filename) {
 
 function getSheetUrl() {
   return SpreadsheetApp.getActiveSpreadsheet().getUrl();
+}
+
+// [NEW] 當試算表開啟時，建立自訂選單
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('工會 CRM 系統')
+    .addItem('🚀 開啟 CRM 系統', 'openWebApp')
+    .addToUi();
+}
+
+// [NEW] 執行跳轉到 Web App 的動作 (已修正為固定網址)
+function openWebApp() {
+  // 將網址固定為您提供的正確版本
+  var url = "https://script.google.com/macros/s/AKfycbxP_wazm8br2NbYT2sBpKGNDYkNiE-M9_jDiaKf9vQeCAH0nuFTaVIEXn990VfSaq8jZA/exec";
+  
+  // 透過 HTML Service 執行 client-side script 來開新分頁
+  var html = HtmlService.createHtmlOutput(
+    '<html><script>' +
+    'window.open("' + url + '", "_blank");' +
+    'google.script.host.close();' +
+    '</script></html>'
+  ).setWidth(250).setHeight(50);
+  
+  SpreadsheetApp.getUi().showModalDialog(html, '正在開啟系統...');
 }
 
 /* --- 2. 帳號與權限管理 (Auth System) --- */
@@ -85,7 +109,7 @@ function handleRegister(email, pass, name) {
   }
 }
 
-// [NEW] 取得所有使用者列表 (僅 Admin 可用)
+// 取得所有使用者列表 (僅 Admin 可用)
 function getAllUsers(token) {
   const user = verifyToken(token);
   if (!user.valid || user.role !== 'Admin') throw new Error("權限不足");
@@ -96,7 +120,7 @@ function getAllUsers(token) {
   return data.slice(1).map(r => ({ id: r[0], username: r[1], name: r[2], role: r[5] }));
 }
 
-// [NEW] 管理員更新使用者 (修改權限或刪除)
+// 管理員更新使用者 (修改權限或刪除)
 function adminUpdateUser(token, targetUid, action, newRole) {
   const user = verifyToken(token);
   if (!user.valid || user.role !== 'Admin') throw new Error("權限不足");
