@@ -1,603 +1,597 @@
 <script>
 const App = {
-    token: localStorage.getItem("crm_token"),
-    user: null,
-    
-    // 初始化
-    init: function() {
-        this.bindAuthEvents();
-        if (this.token) { 
-            this.verifyToken(); 
-        } else { 
-            this.showAuth('login'); 
-        }
-    },
+token: localStorage.getItem("crm_token"),
+user: null,
+isEventsBound: false, // 防止事件重複綁定標記
 
-    // 綁定登入/註冊頁面事件
-    bindAuthEvents: function() {
-        const regLink = document.getElementById('link-to-register');
-        const loginLink = document.getElementById('link-to-login');
-        const loginBtn = document.getElementById('btn-login');
-        const regBtn = document.getElementById('btn-register');
-        const logoutBtn = document.getElementById('btn-logout');
+// 將會員資料移至 App 層級，確保全域存取一致性
+allData: [],
+currentView: [],
 
-        if(regLink) regLink.onclick = () => this.toggleAuthForm('register');
-        if(loginLink) loginLink.onclick = () => this.toggleAuthForm('login');
-        if(loginBtn) loginBtn.onclick = () => this.handleLogin();
-        if(regBtn) regBtn.onclick = () => this.handleRegister();
-        if(logoutBtn) logoutBtn.onclick = () => this.logout();
-    },
+// 初始化
+init: function() {
+this.bindAuthEvents();
+if (this.token) {
+this.verifyToken();
+} else {
+this.showAuth('login');
+}
+},
 
-    toggleAuthForm: function(mode) {
-        document.getElementById('form-login').classList.toggle('d-none', mode !== 'login');
-        document.getElementById('form-register').classList.toggle('d-none', mode !== 'register');
-    },
+// 綁定登入/註冊頁面事件
+bindAuthEvents: function() {
+const regLink = document.getElementById('link-to-register');
+const loginLink = document.getElementById('link-to-login');
+const loginBtn = document.getElementById('btn-login');
+const regBtn = document.getElementById('btn-register');
+const logoutBtn = document.getElementById('btn-logout');
 
-    showAuth: function(mode) {
-        document.getElementById('auth-container').classList.remove('d-none');
-        document.getElementById('app-container').style.display = 'none';
-        this.toggleAuthForm(mode || 'login');
-    },
+if(regLink) regLink.onclick = () => this.toggleAuthForm('register');
+if(loginLink) loginLink.onclick = () => this.toggleAuthForm('login');
+if(loginBtn) loginBtn.onclick = () => this.handleLogin();
+if(regBtn) regBtn.onclick = () => this.handleRegister();
+if(logoutBtn) logoutBtn.onclick = () => this.logout();
+},
 
-    // 驗證 Token
-    verifyToken: function() {
-        this.toggleLoader(true);
-        google.script.run.withSuccessHandler(res => {
-            this.toggleLoader(false);
-            if (res.valid) { 
-                this.user = res; 
-                this.initSystem(); 
-            } else { 
-                localStorage.removeItem("crm_token"); 
-                this.showAuth('login'); 
-            }
-        }).withFailureHandler(() => { 
-            alert("連線錯誤"); 
-            this.showAuth('login'); 
-        }).verifyToken(this.token);
-    },
+toggleAuthForm: function(mode) {
+document.getElementById('form-login').classList.toggle('d-none', mode !== 'login');
+document.getElementById('form-register').classList.toggle('d-none', mode !== 'register');
+},
 
-    handleLogin: function() {
-        const email = document.getElementById('login-email').value;
-        const pass = document.getElementById('login-password').value;
-        if(!email || !pass) return alert("請輸入帳號密碼");
-        
-        this.toggleLoader(true);
-        google.script.run.withSuccessHandler(res => {
-            this.toggleLoader(false);
-            if(res.success) { 
-                localStorage.setItem("crm_token", res.token); 
-                this.token = res.token; 
-                this.verifyToken(); 
-            } else { 
-                alert(res.message); 
-            }
-        }).loginUser(email, pass);
-    },
+showAuth: function(mode) {
+document.getElementById('auth-container').classList.remove('d-none');
+document.getElementById('app-container').style.display = 'none';
+this.toggleAuthForm(mode || 'login');
+},
 
-    handleRegister: function() {
-        const name = document.getElementById('reg-name').value;
-        const email = document.getElementById('reg-email').value;
-        const pass = document.getElementById('reg-password').value;
-        if(!name || !email || !pass) return alert("請輸入完整資料");
-        
-        this.toggleLoader(true);
-        google.script.run.withSuccessHandler(res => {
-            this.toggleLoader(false); 
-            alert(res.message); 
-            if(res.success) this.toggleAuthForm('login');
-        }).handleRegister(email, pass, name);
-    },
+// 驗證 Token
+verifyToken: function() {
+this.toggleLoader(true);
+google.script.run.withSuccessHandler(res => {
+this.toggleLoader(false);
+if (res.valid) {
+this.user = res;
+this.initSystem();
+} else {
+localStorage.removeItem("crm_token");
+this.showAuth('login');
+}
+}).withFailureHandler(() => {
+alert("連線錯誤");
+this.showAuth('login');
+}).verifyToken(this.token);
+},
 
-    logout: function() { 
-        localStorage.removeItem("crm_token"); 
-        location.reload(); 
-    },
+handleLogin: function() {
+const email = document.getElementById('login-email').value;
+const pass = document.getElementById('login-password').value;
+if(!email || !pass) return alert("請輸入帳號密碼");
 
-    toggleLoader: function(show) {
-        const loader = document.getElementById('loader');
-        if(loader) loader.style.display = show ? "flex" : "none";
-    },
+this.toggleLoader(true);
+google.script.run.withSuccessHandler(res => {
+this.toggleLoader(false);
+if(res.success) {
+localStorage.setItem("crm_token", res.token);
+this.token = res.token;
+this.verifyToken();
+} else {
+alert(res.message);
+}
+}).loginUser(email, pass);
+},
 
-    // 處理 Email 寄送邏輯
-    handleEmailRequest: function(members) {
-        if (!members || !members.length) return alert("無會員資料");
-        const type = prompt("選擇信箱: 1:常用E-MAIL, 2:院內E-mail", "1");
-        if(type!=='1' && type!=='2') return;
-        
-        const field = type==='1' ? '常用E-MAIL' : '院內E-mail';
-        const emails = members.map(m => m[field]).filter(e => e && e.includes('@'));
-        
-        if(!emails.length) return alert("無有效 Email");
-        
-        const str = emails.join(',');
-        if(str.length > 1800) {
-            navigator.clipboard.writeText(str)
-                .then(() => alert("名單過長，已複製到剪貼簿"))
-                .catch(() => prompt("複製:", str));
-        } else {
-            window.open(`mailto:?bcc=${str}`);
-        }
-    },
+handleRegister: function() {
+const name = document.getElementById('reg-name').value;
+const email = document.getElementById('reg-email').value;
+const pass = document.getElementById('reg-password').value;
+if(!name || !email || !pass) return alert("請輸入完整資料");
 
-    // === CRM 系統啟動主邏輯 ===
-    initSystem: function() {
-        // 切換顯示
-        document.getElementById('auth-container').classList.add('d-none');
-        document.getElementById('app-container').style.display = 'flex';
-        document.getElementById('display-username').textContent = `${this.user.name} (${this.user.role})`;
+this.toggleLoader(true);
+google.script.run.withSuccessHandler(res => {
+this.toggleLoader(false);
+alert(res.message);
+if(res.success) this.toggleAuthForm('login');
+}).handleRegister(email, pass, name);
+},
 
-        // Admin 權限判斷
-        if (this.user.role === 'Admin') {
-            const adminLi = document.getElementById('nav-admin-li');
-            if(adminLi) adminLi.classList.remove('d-none');
-        }
+logout: function() {
+localStorage.removeItem("crm_token");
+location.reload();
+},
 
-        // 宣告 DOM 元素
-        const sidebar = document.getElementById('sidebar');
-        const toggleBtn = document.getElementById('sidebar-toggle-btn');
-        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-        const sidebarOverlay = document.getElementById('sidebar-overlay');
-        
-        // 頁面與導覽
-        const pages = { 
-            dashboard: document.getElementById("page-dashboard"), 
-            members: document.getElementById("page-members"),
-            reconciliation: document.getElementById("page-reconciliation"),
-            admin: document.getElementById("page-admin")
-        };
-        const navLinks = { 
-            dashboard: document.getElementById("nav-dashboard"), 
-            members: document.getElementById("nav-members"), 
-            reconciliation: document.getElementById("nav-reconciliation"),
-            admin: document.getElementById("nav-admin"),
-            backend: document.getElementById("nav-backend") 
-        };
+toggleLoader: function(show) {
+const loader = document.getElementById('loader');
+if(loader) loader.style.display = show ? "flex" : "none";
+},
 
-        // 切換頁面函式
-        const switchPage = (pageName) => {
-            Object.values(pages).forEach(p => { if(p) p.classList.remove('active'); });
-            Object.values(navLinks).forEach(a => { if(a) a.classList.remove('active'); });
-            
-            if(pages[pageName]) pages[pageName].classList.add('active');
-            if(navLinks[pageName]) navLinks[pageName].classList.add('active');
-            
-            if (window.innerWidth <= 768) closeMobileSidebar();
+// 處理 Email 寄送邏輯 (已修正：移除預設值與增加驗證)
+handleEmailRequest: function(members) {
+if (!members || !members.length) return alert("無會員資料");
 
-            if (pageName === 'dashboard') loadDashboardData();
-            if (pageName === 'members') loadMemberData();
-            if (pageName === 'admin') App.loadAdminData();
-        };
+// 修改：預設值改為空字串，並用換行讓選項更清楚
+const type = prompt("請選擇信箱類型 (輸入數字)：\n1: 常用E-MAIL\n2: 院內E-mail", "");
 
-        const toggleMobileSidebar = () => sidebar.classList.toggle('mobile-open');
-        const closeMobileSidebar = () => sidebar.classList.remove('mobile-open');
+// 修改：增加驗證，若取消或輸入錯誤則停止
+if (type !== '1' && type !== '2') return;
 
-        // --- 綁定基礎 UI 事件 ---
-        toggleBtn.addEventListener('click', () => { 
-            sidebar.classList.toggle('collapsed'); 
-            localStorage.setItem('sb', sidebar.classList.contains('collapsed')); 
-        });
-        if (localStorage.getItem('sb') === 'true') sidebar.classList.add('collapsed');
-        
-        mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
-        sidebarOverlay.addEventListener('click', closeMobileSidebar);
+const field = type === '1' ? '常用E-MAIL' : '院內E-mail';
+const emails = members.map(m => m[field]).filter(e => e && e.includes('@'));
 
-        navLinks.dashboard.addEventListener('click', () => switchPage('dashboard'));
-        navLinks.members.addEventListener('click', () => switchPage('members'));
-        navLinks.reconciliation.addEventListener('click', () => switchPage('reconciliation'));
-        if(navLinks.admin) navLinks.admin.addEventListener('click', () => switchPage('admin'));
-        
-        google.script.run.withSuccessHandler(url => { if(navLinks.backend) navLinks.backend.href = url; }).getSheetUrl();
+if(!emails.length) return alert("目前的清單中無有效 Email");
 
-        // Admin 重新整理按鈕
-        const refreshAdminBtn = document.getElementById('btn-refresh-admin');
-        if(refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => App.loadAdminData());
+const str = emails.join(',');
+if(str.length > 1800) {
+navigator.clipboard.writeText(str)
+.then(() => alert("名單過長，已複製到剪貼簿"))
+.catch(() => prompt("複製:", str));
+} else {
+window.open(`mailto:?bcc=${str}`);
+}
+},
 
-        // ==========================================
-        // === 會員管理邏輯 (修正篩選下載) ===
-        // ==========================================
-        const memberModal = document.getElementById("member-modal");
-        
-        // 定義變數：allMemberData (原始總表), currentMemberView (篩選後目前的檢視)
-        let allMemberData = [];
-        let currentMemberView = [];
+// === CRM 系統啟動主邏輯 ===
+initSystem: function() {
+// [防止重複執行] 如果事件已經綁定過，僅切換頁面並返回，避免重複綁定事件
+if (this.isEventsBound) {
+document.getElementById('auth-container').classList.add('d-none');
+document.getElementById('app-container').style.display = 'flex';
+// 重新整理目前的頁面資料 (選擇性)
+return;
+}
 
-        // 1. 新增會員按鈕
-        const addMemBtn = document.getElementById("add-member-btn");
-        if(addMemBtn) addMemBtn.addEventListener('click', () => { 
-            document.getElementById("member-form").reset(); 
-            document.getElementById("modal-title").textContent="新增會員"; 
-            document.getElementById("form-row-id").value=''; 
-            memberModal.style.display="block"; 
-        });
+// 切換顯示
+document.getElementById('auth-container').classList.add('d-none');
+document.getElementById('app-container').style.display = 'flex';
+document.getElementById('display-username').textContent = `${this.user.name} (${this.user.role})`;
 
-        // 2. 下載 CSV 按鈕 (修正：下載 currentMemberView)
-        const downloadBtn = document.getElementById("download-csv-btn");
-        if(downloadBtn) downloadBtn.addEventListener('click', () => {
-             const headers = [ "入會日期", "退會日期", "會籍狀態", "會員編號", "會員類別", "勞工類別", "員工編號", "院區", "姓名", "職稱", "身分證字號", "生日", "手機", "通訊處", "常用E-MAIL", "院內E-mail", "臉書名稱", "line ID", "line 暱稱", "是否在會員line群", "入會單有無", "性別", "聯絡電話", "學歷/學校", "會費繳交方式" ];
-             
-             // 這裡使用 currentMemberView，確保下載的是篩選後的資料
-             if(!currentMemberView.length) return alert("目前無資料可下載 (請檢查搜尋條件)");
-             
-             const dataArray = [headers, ...currentMemberView.map(m => headers.map(x => m[x] || ''))];
-             
-             try {
-                const ws = XLSX.utils.aoa_to_sheet(dataArray);
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "會員清單");
-                XLSX.writeFile(wb, "會員資料.xlsx");
-             } catch (err) {
-                console.error(err);
-                alert("下載失敗，請檢查瀏覽器相容性或重新整理");
-             }
-        });
+// Admin 權限判斷
+if (this.user.role === 'Admin') {
+const adminLi = document.getElementById('nav-admin-li');
+if(adminLi) adminLi.classList.remove('d-none');
+}
 
-        // 3. 寄信給列表所有會員按鈕 (修正：寄給 currentMemberView)
-        const emailAllBtn = document.getElementById("email-all-btn");
-        if(emailAllBtn) emailAllBtn.addEventListener('click', () => {
-            // 這裡使用 currentMemberView，確保寄信對象是篩選後的資料
-            App.handleEmailRequest(currentMemberView);
-        });
+// 宣告 DOM 元素
+const sidebar = document.getElementById('sidebar');
+const toggleBtn = document.getElementById('sidebar-toggle-btn');
+const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
 
-        // Modal 關閉事件
-        const closeBtn = document.querySelector(".modal-close-btn");
-        if(closeBtn) closeBtn.addEventListener('click', () => memberModal.style.display="none");
-        window.addEventListener('click', e => { if (e.target == memberModal) memberModal.style.display="none"; });
-        
-        // 載入會員資料
-        const loadMemberData = () => { 
-            App.toggleLoader(true); 
-            google.script.run.withSuccessHandler(d => { 
-                allMemberData = d;      // 儲存原始資料
-                currentMemberView = d;  // 預設檢視為全部
-                renderMembers(d); 
-                App.toggleLoader(false); 
-            }).getMembers(App.token); 
-        };
+// 頁面與導覽
+const pages = {
+dashboard: document.getElementById("page-dashboard"),
+members: document.getElementById("page-members"),
+reconciliation: document.getElementById("page-reconciliation"),
+admin: document.getElementById("page-admin")
+};
+const navLinks = {
+dashboard: document.getElementById("nav-dashboard"),
+members: document.getElementById("nav-members"),
+reconciliation: document.getElementById("nav-reconciliation"),
+admin: document.getElementById("nav-admin"),
+backend: document.getElementById("nav-backend")
+};
 
-        // 渲染會員表格
-        const renderMembers = (data) => {
-            const tb = document.getElementById("member-table-body"); 
-            tb.innerHTML="";
-            data.forEach(m => {
-                const row = tb.insertRow();
-                row.innerHTML = `
-                    <td>${m["姓名"]||''}</td>
-                    <td>${m["會員編號"]||''}</td>
-                    <td>${m["院區"]||''}</td>
-                    <td>${m["單位"]||''}</td>
-                    <td>${m["職稱"]||''}</td>
-                    <td>
-                        <button class="btn-email" data-r="${m.row}" title="寄信">✉️</button>
-                        <button class="btn-edit" data-r="${m.row}" title="編輯">✏️</button>
-                        <button class="btn-delete" data-r="${m.row}" title="刪除">🗑️</button>
-                    </td>`;
-            });
-            document.getElementById("search-result-count").textContent = `共 ${data.length} 筆`;
-        };
+// 切換頁面函式
+const switchPage = (pageName) => {
+Object.values(pages).forEach(p => { if(p) p.classList.remove('active'); });
+Object.values(navLinks).forEach(a => { if(a) a.classList.remove('active'); });
 
-        // 搜尋功能 (修正：搜尋時同步更新 currentMemberView)
-        document.getElementById("search-input").addEventListener('input', (e) => {
-            const term = e.target.value.toLowerCase().trim();
-            
-            if (!term) {
-                // 如果搜尋框清空，回復為全部資料
-                currentMemberView = [...allMemberData];
-            } else {
-                // 否則過濾資料，並更新 currentMemberView
-                currentMemberView = allMemberData.filter(m => 
-                    Object.values(m).some(v => String(v).toLowerCase().includes(term))
-                );
-            }
-            // 重新渲染畫面
-            renderMembers(currentMemberView);
-        });
+if(pages[pageName]) pages[pageName].classList.add('active');
+if(navLinks[pageName]) navLinks[pageName].classList.add('active');
 
-        // 表單提交
-        document.getElementById("member-form").addEventListener('submit', (e) => {
-            e.preventDefault(); 
-            App.toggleLoader(true);
-            const o = Object.fromEntries(new FormData(e.target).entries());
-            const f = o.row ? 'updateMember' : 'addMember';
-            google.script.run.withSuccessHandler(m => { 
-                alert(m); 
-                memberModal.style.display="none"; 
-                loadMemberData(); 
-            }).withFailureHandler(e => {
-                App.toggleLoader(false);
-                alert(e);
-            })[f](App.token, o);
-        });
+if (window.innerWidth <= 768) closeMobileSidebar();
 
-        // 表格按鈕點擊事件 (修正：編輯/刪除時使用 allMemberData 尋找完整資料)
-        document.getElementById("member-table-body").addEventListener('click', (e) => {
-            const b = e.target.closest('button'); 
-            if(!b) return;
-            const r = b.dataset.r; 
-            
-            // 無論目前篩選狀態為何，都從總表 allMemberData 尋找對應 row ID 的會員
-            const m = allMemberData.find(x => x.row == r);
-            if (!m) return;
-            
-            if(b.classList.contains('btn-edit')) { 
-                for(let k in m) if(document.getElementById(k)) document.getElementById(k).value=m[k]; 
-                document.getElementById("form-row-id").value=r; 
-                document.getElementById("modal-title").textContent="編輯會員"; 
-                memberModal.style.display="block"; 
-            }
-            else if(b.classList.contains('btn-delete')) { 
-                if(confirm(`確定刪除 ${m['姓名']}?`)) { 
-                    App.toggleLoader(true); 
-                    google.script.run.withSuccessHandler(msg => {
-                        alert(msg);
-                        loadMemberData();
-                    }).deleteMember(App.token, r); 
-                } 
-            }
-            else if(b.classList.contains('btn-email')) {
-                App.handleEmailRequest([m]);
-            }
-        });
-        
-        // --- 儀表板邏輯 (Dashboard) - Updated for DataLabels & Colors ---
-        let charts = {};
-        const loadDashboardData = () => { 
-            App.toggleLoader(true); 
-            google.script.run.withSuccessHandler(d => { 
-                renderDash(d); 
-                App.toggleLoader(false); 
-            }).getDashboardAnalytics(App.token); 
-        };
+if (pageName === 'dashboard') loadDashboardData();
+if (pageName === 'members') loadMemberData();
+if (pageName === 'admin') App.loadAdminData();
+};
 
-        const renderDash = (d) => {
-            // 啟用 DataLabels 插件
-            if (Chart.register) {
-                Chart.register(ChartDataLabels);
-            }
+const toggleMobileSidebar = () => sidebar.classList.toggle('mobile-open');
+const closeMobileSidebar = () => sidebar.classList.remove('mobile-open');
 
-            document.getElementById("kpi-total-members").textContent = d.totalActiveMembers;
-            document.getElementById("kpi-new-this-month").textContent = d.newThisMonth;
-            document.getElementById("kpi-leaves-this-month").textContent = d.leavesThisMonth;
-            document.getElementById("kpi-avg-age").textContent = d.avgAge;
-            
-            // 1. 圓餅圖/甜甜圈圖共用設定 (顯示百分比)
-            const pieOptions = { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                plugins: { 
-                    legend: { position: 'right', labels: { boxWidth: 10 } },
-                    datalabels: {
-                        color: '#fff',
-                        font: { weight: 'bold' },
-                        formatter: (value, ctx) => {
-                            let sum = 0;
-                            let dataArr = ctx.chart.data.datasets[0].data;
-                            dataArr.map(data => { sum += data; });
-                            let percentage = sum === 0 ? "0%" : (value * 100 / sum).toFixed(1) + "%";
-                            return percentage;
-                        }
-                    }
-                } 
-            };
+// --- 綁定基礎 UI 事件 ---
+toggleBtn.addEventListener('click', () => {
+sidebar.classList.toggle('collapsed');
+localStorage.setItem('sb', sidebar.classList.contains('collapsed'));
+});
+if (localStorage.getItem('sb') === 'true') sidebar.classList.add('collapsed');
 
-            // 2. 長條圖共用設定 (顯示數字)
-            const barOptions = { 
-                maintainAspectRatio: false,
-                layout: { padding: { top: 20 } }, // 避免上方數字被切掉
-                plugins: {
-                    legend: { display: true }, // 預設顯示，年齡分布會關掉
-                    datalabels: {
-                        anchor: 'end',
-                        align: 'end',
-                        color: '#444',
-                        font: { weight: 'bold' }
-                    }
-                }
-            };
-            
-            // 繪圖輔助函式
-            const cc = (id, cfg) => { 
-                const ctx = document.getElementById(id).getContext('2d'); 
-                if(charts[id]) charts[id].destroy(); 
-                charts[id] = new Chart(ctx, cfg); 
-            };
-            const rt = (id, arr, t) => document.getElementById(id).innerHTML=`<thead><tr><th>${t}</th><th>人數</th></tr></thead><tbody>${arr.map(i=>`<tr><td>${i.key}</td><td>${i.value}</td></tr>`).join('')}</tbody>`;
-            
-            // [圖表1] 近24個月 (長條圖)
-            cc('join-leave-month-chart', { 
-                type: 'bar', 
-                data: { 
-                    labels: d.joinLeaveByMonth.map(x=>x.key), 
-                    datasets: [
-                        {label:'入會', data:d.joinLeaveByMonth.map(x=>x.joins), backgroundColor:'#28a745'},
-                        {label:'退會', data:d.joinLeaveByMonth.map(x=>x.leaves), backgroundColor:'#dc3545'}
-                    ] 
-                }, 
-                options: barOptions 
-            });
+mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
+sidebarOverlay.addEventListener('click', closeMobileSidebar);
 
-            // [圖表2] 每年統計 (長條圖)
-            cc('join-leave-year-chart', { 
-                type: 'bar', 
-                data: { 
-                    labels: d.joinLeaveByYear.map(x=>x.key), 
-                    datasets: [
-                        {label:'入會', data:d.joinLeaveByYear.map(x=>x.joins), backgroundColor:'#007bff'},
-                        {label:'退會', data:d.joinLeaveByYear.map(x=>x.leaves), backgroundColor:'#fd7e14'}
-                    ] 
-                }, 
-                options: barOptions 
-            });
+navLinks.dashboard.addEventListener('click', () => switchPage('dashboard'));
+navLinks.members.addEventListener('click', () => switchPage('members'));
+navLinks.reconciliation.addEventListener('click', () => switchPage('reconciliation'));
+if(navLinks.admin) navLinks.admin.addEventListener('click', () => switchPage('admin'));
 
-            // [圖表3] 院區分布 (甜甜圈圖) - 更新配色
-            // 使用更鮮明對比的顏色
-            const distinctColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
-            cc('campus-chart', { 
-                type: 'doughnut', 
-                data: { 
-                    labels: d.campusDistribution.map(x=>x.key), 
-                    datasets: [{ 
-                        data: d.campusDistribution.map(x=>x.value), 
-                        backgroundColor: distinctColors.slice(0, d.campusDistribution.length) 
-                    }] 
-                }, 
-                options: pieOptions 
-            }); 
-            rt('campus-table', d.campusDistribution, '院區');
+google.script.run.withSuccessHandler(url => { if(navLinks.backend) navLinks.backend.href = url; }).getSheetUrl();
 
-            // [圖表4] 性別比例 (圓餅圖)
-            cc('gender-chart', { 
-                type: 'pie', 
-                data: { 
-                    labels: d.genderDistribution.map(x=>x.key), 
-                    datasets: [{ 
-                        data: d.genderDistribution.map(x=>x.value), 
-                        backgroundColor: ['#007bff','#e83e8c', '#6c757d'] 
-                    }] 
-                }, 
-                options: pieOptions 
-            }); 
-            rt('gender-table', d.genderDistribution, '性別');
+// Admin 重新整理按鈕
+const refreshAdminBtn = document.getElementById('btn-refresh-admin');
+if(refreshAdminBtn) refreshAdminBtn.addEventListener('click', () => App.loadAdminData());
 
-            // [圖表5] 會員類別 (圓餅圖)
-            cc('member-types-chart', { 
-                type: 'pie', 
-                data: { 
-                    labels: d.memberTypeDistribution.map(x=>x.key), 
-                    datasets: [{ 
-                        data: d.memberTypeDistribution.map(x=>x.value), 
-                        backgroundColor: ['#20c997','#6610f2', '#17a2b8', '#ffc107'] 
-                    }] 
-                }, 
-                options: pieOptions 
-            }); 
-            rt('member-types-table', d.memberTypeDistribution, '會員類別');
+// ==========================================
+// === 會員管理邏輯 ===
+// ==========================================
+const memberModal = document.getElementById("member-modal");
 
-            // [圖表6] 勞工類別 (圓餅圖)
-            cc('labor-types-chart', { 
-                type: 'pie', 
-                data: { 
-                    labels: d.laborTypeDistribution.map(x=>x.key), 
-                    datasets: [{ 
-                        data: d.laborTypeDistribution.map(x=>x.value), 
-                        backgroundColor: ['#dc3545','#fd7e14', '#28a745'] 
-                    }] 
-                }, 
-                options: pieOptions 
-            }); 
-            rt('labor-types-table', d.laborTypeDistribution, '勞工類別');
+// 1. 新增會員按鈕
+const addMemBtn = document.getElementById("add-member-btn");
+if(addMemBtn) addMemBtn.addEventListener('click', () => {
+document.getElementById("member-form").reset();
+document.getElementById("modal-title").textContent="新增會員";
+document.getElementById("form-row-id").value='';
+memberModal.style.display="block";
+});
 
-            // [圖表7] 年齡分布 (長條圖) - 隱藏 legend
-            const ageOptions = JSON.parse(JSON.stringify(barOptions)); // 深拷貝
-            ageOptions.plugins.legend = { display: false };
-            ageOptions.plugins.datalabels = { ...barOptions.plugins.datalabels, anchor: 'end', align: 'end' };
+// 2. 下載 CSV 按鈕 (使用 App.currentView)
+const downloadBtn = document.getElementById("download-csv-btn");
+if(downloadBtn) downloadBtn.addEventListener('click', () => {
+const headers = [ "入會日期", "退會日期", "會籍狀態", "會員編號", "會員類別", "勞工類別", "員工編號", "院區", "姓名", "職稱", "身分證字號", "生日", "手機", "通訊處", "常用E-MAIL", "院內E-mail", "臉書名稱", "line ID", "line 暱稱", "是否在會員line群", "入會單有無", "性別", "聯絡電話", "學歷/學校", "會費繳交方式" ];
 
-            cc('age-chart', { 
-                type: 'bar', 
-                data: { 
-                    labels: d.ageDistribution.map(x=>x.key), 
-                    datasets: [{ 
-                        label:'人數', 
-                        data: d.ageDistribution.map(x=>x.value), 
-                        backgroundColor: '#17a2b8' 
-                    }] 
-                }, 
-                options: ageOptions 
-            });
-        };
-        
-        // --- 帳務核對邏輯 (Reconciliation) ---
-        const fileInput = document.getElementById("file-input");
-        const reconcileBtn = document.getElementById("reconcile-btn");
-        if(fileInput) fileInput.addEventListener('change', (e) => document.getElementById("file-info").textContent = e.target.files[0] ? `已選擇: ${e.target.files[0].name}` : '');
-        if(reconcileBtn) reconcileBtn.addEventListener('click', () => {
-            const f = fileInput.files[0]; if(!f) return alert("請選擇檔案");
-            App.toggleLoader(true);
-            const r = new FileReader();
-            r.onload = (e) => {
-                try {
-                    const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    const j = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: 2 });
-                    google.script.run.withSuccessHandler(res => {
-                        if(!res.success) { alert(res.error); return App.toggleLoader(false); }
-                        const rt = (id, d, c) => document.querySelector(`#${id} tbody`).innerHTML = d.length ? d.map(i => `<tr>${c.map(k=>`<td>${i[k]||''}</td>`).join('')}</tr>`).join('') : '<tr><td colspan="4">無</td></tr>';
-                        document.getElementById('missing-count').textContent=res.results.missing.length; rt('missing-table', res.results.missing, ['id','name','campus','unit']);
-                        document.getElementById('extra-count').textContent=res.results.extra.length; rt('extra-table', res.results.extra, ['id','name','campus','amount']);
-                        document.getElementById('new-member-count').textContent=res.results.newMembers.length; rt('new-member-table', res.results.newMembers, ['id','name','campus','amount']);
-                        document.getElementById('special-case-count').textContent=res.results.specialCases.length; rt('special-case-table', res.results.specialCases, ['id','name','campus','amount']);
-                        document.getElementById("results-section").style.display='grid'; 
-                        alert("核對完成"); 
-                        App.toggleLoader(false);
-                    }).reconcileDues(App.token, j);
-                } catch(e) { alert(e.message); App.toggleLoader(false); }
-            };
-            r.readAsArrayBuffer(f);
-        });
+if(!App.currentView.length) return alert("目前無資料可下載 (請檢查搜尋條件)");
 
-        // 預設進入儀表板
-        switchPage('dashboard');
-    },
+const dataArray = [headers, ...App.currentView.map(m => headers.map(x => m[x] || ''))];
 
-    // --- Admin Data Logic ---
-    loadAdminData: function() {
-        if(this.user.role !== 'Admin') return;
-        this.toggleLoader(true);
-        google.script.run.withSuccessHandler(data => {
-            this.renderAdminTable(data);
-            this.toggleLoader(false);
-        }).withFailureHandler(e => {
-            alert("載入失敗: " + e);
-            this.toggleLoader(false);
-        }).getAllUsers(this.token);
-    },
+try {
+const ws = XLSX.utils.aoa_to_sheet(dataArray);
+const wb = XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(wb, ws, "會員清單");
+XLSX.writeFile(wb, "會員資料.xlsx");
+} catch (err) {
+console.error(err);
+alert("下載失敗，請檢查瀏覽器相容性或重新整理");
+}
+});
 
-    renderAdminTable: function(users) {
-        const tbody = document.getElementById('tbody-admin');
-        if(!tbody) return;
-        tbody.innerHTML = users.map(u => {
-            const isSelf = u.id === this.user.uid;
-            let btns = '';
-            
-            if(!isSelf) {
-                const delBtn = `<button class="btn-sm btn-delete ms-1" onclick="App.handleAdminAction('${u.id}','delete','')">刪除</button>`;
-                if(u.role === 'Pending') {
-                    btns = `<button class="btn-sm btn-primary" onclick="App.handleAdminAction('${u.id}','update','Editor')">准(編輯)</button> 
-                            <button class="btn-sm btn-secondary" onclick="App.handleAdminAction('${u.id}','update','Viewer')">准(檢視)</button>` + delBtn;
-                } else if(u.role === 'Admin') {
-                    btns = `<button class="btn-sm btn-outline-secondary" onclick="App.handleAdminAction('${u.id}','update','Editor')">降為編輯</button>`;
-                } else {
-                    const next = u.role === 'Editor' ? 'Viewer' : 'Editor';
-                    const label = u.role === 'Editor' ? '轉檢視' : '轉編輯';
-                    btns = `<button class="btn-sm btn-outline-secondary" onclick="App.handleAdminAction('${u.id}','update','${next}')">${label}</button> 
-                            <button class="btn-sm btn-primary" onclick="App.handleAdminAction('${u.id}','update','Admin')">升管理</button>` + delBtn;
-                }
-            } else {
-                btns = '<span class="text-secondary small">自己</span>';
-            }
+// 3. 寄信給列表所有會員按鈕 (使用 App.currentView)
+const emailAllBtn = document.getElementById("email-all-btn");
+if(emailAllBtn) emailAllBtn.addEventListener('click', (e) => {
+e.preventDefault();
+// 呼叫寄信邏輯，傳入目前的檢視資料
+App.handleEmailRequest(App.currentView);
+});
 
-            return `<tr>
-                <td>${u.name}<br><small class="text-secondary">${u.username}</small></td>
-                <td><span class="badge role-${u.role}">${u.role}</span></td>
-                <td>${btns}</td>
-                <td>${!isSelf ? '' : ''}</td>
-            </tr>`;
-        }).join('');
-    },
+// Modal 關閉事件
+const closeBtn = document.querySelector(".modal-close-btn");
+if(closeBtn) closeBtn.addEventListener('click', () => memberModal.style.display="none");
+window.addEventListener('click', e => { if (e.target == memberModal) memberModal.style.display="none"; });
 
-    handleAdminAction: function(uid, action, newRole) {
-        let msg = action === 'delete' ? "確定刪除此使用者?" : `確定將權限變更為 ${newRole}?`;
-        if(!confirm(msg)) return;
+// 載入會員資料
+const loadMemberData = () => {
+App.toggleLoader(true);
+google.script.run.withSuccessHandler(d => {
+App.allData = d; // 儲存原始資料到 App 屬性
+App.currentView = d; // 預設檢視為全部
+renderMembers(d);
+App.toggleLoader(false);
+}).getMembers(App.token);
+};
 
-        this.toggleLoader(true);
-        google.script.run.withSuccessHandler(res => {
-            this.toggleLoader(false);
-            alert(res.message);
-            if(res.success) this.loadAdminData();
-        }).withFailureHandler(e => {
-            alert("操作失敗: " + e);
-            this.toggleLoader(false);
-        }).adminUpdateUser(this.token, uid, action, newRole);
-    }
+// 渲染會員表格
+const renderMembers = (data) => {
+const tb = document.getElementById("member-table-body");
+tb.innerHTML="";
+data.forEach(m => {
+const row = tb.insertRow();
+row.innerHTML = `
+<td>${m["姓名"]||''}</td>
+<td>${m["會員編號"]||''}</td>
+<td>${m["院區"]||''}</td>
+<td>${m["單位"]||''}</td>
+<td>${m["職稱"]||''}</td>
+<td>
+<button class="btn-email" data-r="${m.row}" title="寄信">✉️</button>
+<button class="btn-edit" data-r="${m.row}" title="編輯">✏️</button>
+<button class="btn-delete" data-r="${m.row}" title="刪除">🗑️</button>
+</td>`;
+});
+document.getElementById("search-result-count").textContent = `共 ${data.length} 筆`;
+};
+
+// 搜尋功能
+document.getElementById("search-input").addEventListener('input', (e) => {
+const term = e.target.value.toLowerCase().trim();
+
+if (!term) {
+App.currentView = [...App.allData];
+} else {
+App.currentView = App.allData.filter(m =>
+Object.values(m).some(v => String(v).toLowerCase().includes(term))
+);
+}
+renderMembers(App.currentView);
+});
+
+// 表單提交
+document.getElementById("member-form").addEventListener('submit', (e) => {
+e.preventDefault();
+App.toggleLoader(true);
+const o = Object.fromEntries(new FormData(e.target).entries());
+const f = o.row ? 'updateMember' : 'addMember';
+google.script.run.withSuccessHandler(m => {
+alert(m);
+memberModal.style.display="none";
+loadMemberData();
+}).withFailureHandler(e => {
+App.toggleLoader(false);
+alert(e);
+})[f](App.token, o);
+});
+
+// 表格按鈕點擊事件 (使用 App.allData)
+document.getElementById("member-table-body").addEventListener('click', (e) => {
+const b = e.target.closest('button');
+if(!b) return;
+const r = b.dataset.r;
+
+// 從 App.allData 尋找
+const m = App.allData.find(x => x.row == r);
+if (!m) return;
+
+if(b.classList.contains('btn-edit')) {
+for(let k in m) if(document.getElementById(k)) document.getElementById(k).value=m[k];
+document.getElementById("form-row-id").value=r;
+document.getElementById("modal-title").textContent="編輯會員";
+memberModal.style.display="block";
+}
+else if(b.classList.contains('btn-delete')) {
+if(confirm(`確定刪除 ${m['姓名']}?`)) {
+App.toggleLoader(true);
+google.script.run.withSuccessHandler(msg => {
+alert(msg);
+loadMemberData();
+}).deleteMember(App.token, r);
+}
+}
+else if(b.classList.contains('btn-email')) {
+App.handleEmailRequest([m]);
+}
+});
+
+// --- 儀表板邏輯 (Dashboard) ---
+let charts = {};
+const loadDashboardData = () => {
+App.toggleLoader(true);
+google.script.run.withSuccessHandler(d => {
+renderDash(d);
+App.toggleLoader(false);
+}).getDashboardAnalytics(App.token);
+};
+
+const renderDash = (d) => {
+if (Chart.register) { Chart.register(ChartDataLabels); }
+
+document.getElementById("kpi-total-members").textContent = d.totalActiveMembers;
+document.getElementById("kpi-new-this-month").textContent = d.newThisMonth;
+document.getElementById("kpi-leaves-this-month").textContent = d.leavesThisMonth;
+document.getElementById("kpi-avg-age").textContent = d.avgAge;
+
+const pieOptions = {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'right', labels: { boxWidth: 10 } },
+datalabels: {
+color: '#fff',
+font: { weight: 'bold' },
+formatter: (value, ctx) => {
+let sum = 0;
+let dataArr = ctx.chart.data.datasets[0].data;
+dataArr.map(data => { sum += data; });
+let percentage = sum === 0 ? "0%" : (value * 100 / sum).toFixed(1) + "%";
+return percentage;
+}
+}
+}
+};
+
+const barOptions = {
+maintainAspectRatio: false,
+layout: { padding: { top: 20 } },
+plugins: {
+legend: { display: true },
+datalabels: { anchor: 'end', align: 'end', color: '#444', font: { weight: 'bold' } }
+}
+};
+
+const cc = (id, cfg) => {
+const ctx = document.getElementById(id).getContext('2d');
+if(charts[id]) charts[id].destroy();
+charts[id] = new Chart(ctx, cfg);
+};
+const rt = (id, arr, t) => document.getElementById(id).innerHTML=`<thead><tr><th>${t}</th><th>人數</th></tr></thead><tbody>${arr.map(i=>`<tr><td>${i.key}</td><td>${i.value}</td></tr>`).join('')}</tbody>`;
+
+cc('join-leave-month-chart', {
+type: 'bar',
+data: {
+labels: d.joinLeaveByMonth.map(x=>x.key),
+datasets: [
+{label:'入會', data:d.joinLeaveByMonth.map(x=>x.joins), backgroundColor:'#28a745'},
+{label:'退會', data:d.joinLeaveByMonth.map(x=>x.leaves), backgroundColor:'#dc3545'}
+]
+},
+options: barOptions
+});
+
+cc('join-leave-year-chart', {
+type: 'bar',
+data: {
+labels: d.joinLeaveByYear.map(x=>x.key),
+datasets: [
+{label:'入會', data:d.joinLeaveByYear.map(x=>x.joins), backgroundColor:'#007bff'},
+{label:'退會', data:d.joinLeaveByYear.map(x=>x.leaves), backgroundColor:'#fd7e14'}
+]
+},
+options: barOptions
+});
+
+const distinctColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
+cc('campus-chart', {
+type: 'doughnut',
+data: {
+labels: d.campusDistribution.map(x=>x.key),
+datasets: [{
+data: d.campusDistribution.map(x=>x.value),
+backgroundColor: distinctColors.slice(0, d.campusDistribution.length)
+}]
+},
+options: pieOptions
+});
+rt('campus-table', d.campusDistribution, '院區');
+
+cc('gender-chart', {
+type: 'pie',
+data: {
+labels: d.genderDistribution.map(x=>x.key),
+datasets: [{
+data: d.genderDistribution.map(x=>x.value),
+backgroundColor: ['#007bff','#e83e8c', '#6c757d']
+}]
+},
+options: pieOptions
+});
+rt('gender-table', d.genderDistribution, '性別');
+
+cc('member-types-chart', {
+type: 'pie',
+data: {
+labels: d.memberTypeDistribution.map(x=>x.key),
+datasets: [{
+data: d.memberTypeDistribution.map(x=>x.value),
+backgroundColor: ['#20c997','#6610f2', '#17a2b8', '#ffc107']
+}]
+},
+options: pieOptions
+});
+rt('member-types-table', d.memberTypeDistribution, '會員類別');
+
+cc('labor-types-chart', {
+type: 'pie',
+data: {
+labels: d.laborTypeDistribution.map(x=>x.key),
+datasets: [{
+data: d.laborTypeDistribution.map(x=>x.value),
+backgroundColor: ['#dc3545','#fd7e14', '#28a745']
+}]
+},
+options: pieOptions
+});
+rt('labor-types-table', d.laborTypeDistribution, '勞工類別');
+
+const ageOptions = JSON.parse(JSON.stringify(barOptions));
+ageOptions.plugins.legend = { display: false };
+ageOptions.plugins.datalabels = { ...barOptions.plugins.datalabels, anchor: 'end', align: 'end' };
+
+cc('age-chart', {
+type: 'bar',
+data: {
+labels: d.ageDistribution.map(x=>x.key),
+datasets: [{
+label:'人數',
+data: d.ageDistribution.map(x=>x.value),
+backgroundColor: '#17a2b8'
+}]
+},
+options: ageOptions
+});
+};
+
+// --- 帳務核對邏輯 ---
+const fileInput = document.getElementById("file-input");
+const reconcileBtn = document.getElementById("reconcile-btn");
+if(fileInput) fileInput.addEventListener('change', (e) => document.getElementById("file-info").textContent = e.target.files[0] ? `已選擇: ${e.target.files[0].name}` : '');
+if(reconcileBtn) reconcileBtn.addEventListener('click', () => {
+const f = fileInput.files[0]; if(!f) return alert("請選擇檔案");
+App.toggleLoader(true);
+const r = new FileReader();
+r.onload = (e) => {
+try {
+const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+const j = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { range: 2 });
+google.script.run.withSuccessHandler(res => {
+if(!res.success) { alert(res.error); return App.toggleLoader(false); }
+const rt = (id, d, c) => document.querySelector(`#${id} tbody`).innerHTML = d.length ? d.map(i => `<tr>${c.map(k=>`<td>${i[k]||''}</td>`).join('')}</tr>`).join('') : '<tr><td colspan="4">無</td></tr>';
+document.getElementById('missing-count').textContent=res.results.missing.length; rt('missing-table', res.results.missing, ['id','name','campus','unit']);
+document.getElementById('extra-count').textContent=res.results.extra.length; rt('extra-table', res.results.extra, ['id','name','campus','amount']);
+document.getElementById('new-member-count').textContent=res.results.newMembers.length; rt('new-member-table', res.results.newMembers, ['id','name','campus','amount']);
+document.getElementById('special-case-count').textContent=res.results.specialCases.length; rt('special-case-table', res.results.specialCases, ['id','name','campus','amount']);
+document.getElementById("results-section").style.display='grid';
+alert("核對完成");
+App.toggleLoader(false);
+}).reconcileDues(App.token, j);
+} catch(e) { alert(e.message); App.toggleLoader(false); }
+};
+r.readAsArrayBuffer(f);
+});
+
+// 設定標記，確保之後不會重複綁定事件
+this.isEventsBound = true;
+
+// 預設進入儀表板
+switchPage('dashboard');
+},
+
+// --- Admin Data Logic ---
+loadAdminData: function() {
+if(this.user.role !== 'Admin') return;
+this.toggleLoader(true);
+google.script.run.withSuccessHandler(data => {
+this.renderAdminTable(data);
+this.toggleLoader(false);
+}).withFailureHandler(e => {
+alert("載入失敗: " + e);
+this.toggleLoader(false);
+}).getAllUsers(this.token);
+},
+
+renderAdminTable: function(users) {
+const tbody = document.getElementById('tbody-admin');
+if(!tbody) return;
+tbody.innerHTML = users.map(u => {
+const isSelf = u.id === this.user.uid;
+let btns = '';
+
+if(!isSelf) {
+const delBtn = `<button class="btn-sm btn-delete ms-1" onclick="App.handleAdminAction('${u.id}','delete','')">刪除</button>`;
+if(u.role === 'Pending') {
+btns = `<button class="btn-sm btn-primary" onclick="App.handleAdminAction('${u.id}','update','Editor')">准(編輯)</button>
+<button class="btn-sm btn-secondary" onclick="App.handleAdminAction('${u.id}','update','Viewer')">准(檢視)</button>` + delBtn;
+} else if(u.role === 'Admin') {
+btns = `<button class="btn-sm btn-outline-secondary" onclick="App.handleAdminAction('${u.id}','update','Editor')">降為編輯</button>`;
+} else {
+const next = u.role === 'Editor' ? 'Viewer' : 'Editor';
+const label = u.role === 'Editor' ? '轉檢視' : '轉編輯';
+btns = `<button class="btn-sm btn-outline-secondary" onclick="App.handleAdminAction('${u.id}','update','${next}')">${label}</button>
+<button class="btn-sm btn-primary" onclick="App.handleAdminAction('${u.id}','update','Admin')">升管理</button>` + delBtn;
+}
+} else {
+btns = '<span class="text-secondary small">自己</span>';
+}
+
+return `<tr>
+<td>${u.name}<br><small class="text-secondary">${u.username}</small></td>
+<td><span class="badge role-${u.role}">${u.role}</span></td>
+<td>${btns}</td>
+<td>${!isSelf ? '' : ''}</td>
+</tr>`;
+}).join('');
+},
+
+handleAdminAction: function(uid, action, newRole) {
+let msg = action === 'delete' ? "確定刪除此使用者?" : `確定將權限變更為 ${newRole}?`;
+if(!confirm(msg)) return;
+
+this.toggleLoader(true);
+google.script.run.withSuccessHandler(res => {
+this.toggleLoader(false);
+alert(res.message);
+if(res.success) this.loadAdminData();
+}).withFailureHandler(e => {
+alert("操作失敗: " + e);
+this.toggleLoader(false);
+}).adminUpdateUser(this.token, uid, action, newRole);
+}
 };
 
 document.addEventListener("DOMContentLoaded", () => { App.init(); });
