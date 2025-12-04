@@ -39,7 +39,7 @@ function onOpen() {
 // [NEW] 執行跳轉到 Web App 的動作 (已修正為固定網址)
 function openWebApp() {
   // 將網址固定為您提供的正確版本
-  var url = "https://script.google.com/macros/s/AKfycbxP_wazm8br2NbYT2sBpKGNDYkNiE-M9_jDiaKf9vQeCAH0nuFTaVIEXn990VfSaq8jZA/exec";
+  var url = "https://script.google.com/macros/s/AKfycby1nzC1VZtyWYoph-vqY-UDCa2oPDrRXVUJ_0AHVQPUZm2QgynmeHkUr9sH0dxHwLBs/exec";
   
   // 透過 HTML Service 執行 client-side script 來開新分頁
   var html = HtmlService.createHtmlOutput(
@@ -316,28 +316,51 @@ function reconcileDues(token, reportData) {
     const dbKeyField = '員工編號'; 
     const reportKeyField = '員編';   
     if (colMap[dbKeyField] === undefined) return { success: false, error: `資料庫中找不到「${dbKeyField}」欄位` };
+    
+    // 建立現有會員索引
     for (let i = 1; i < dbData.length; i++) {
       const row = dbData[i];
       const key = String(row[colMap[dbKeyField]] || '').trim();
       if (key) dbMembers[key] = { id: key, name: row[colMap['姓名']], campus: row[colMap['院區']], unit: row[colMap['單位']], isLeft: String(row[colMap['會籍狀態']] || '').includes('退會'), matched: false };
     }
+    
     const missing = [], extra = [], newMembers = [], specialCases = [];  
+    
     reportData.forEach(row => {
       const reportId = String(row[reportKeyField] || '').trim();
       if(!reportId) return;
       const reportName = row['姓名'] || row['名字'];
-      const amount = parseInt(row['金額'] || row['扣款金額'] || 0);
+      
+      // === 核心修改：強力清洗資料 (移除單引號與非數字)，並取絕對值 ===
+      let rawAmount = row['金額'] || row['扣款金額'] || 0;
+      let cleanString = String(rawAmount).replace(/[^0-9-]/g, ''); 
+      const amount = Math.abs(parseInt(cleanString) || 0);
+      // ========================================================
+      
       const reportCampus = row['院區'] || '';
-      if (dbMembers[reportId]) {
-        dbMembers[reportId].matched = true;
-        if (dbMembers[reportId].isLeft) extra.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+      
+      // === 邏輯修改：只要金額符合，優先歸類為新入會/特殊個案 (無論是否在資料庫) ===
+      if (amount === 1450) {
+          newMembers.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+          // 若在資料庫中也標記為已核對，避免出現在 Missing
+          if (dbMembers[reportId]) dbMembers[reportId].matched = true;
+      } else if (amount === 1700) {
+          specialCases.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+          if (dbMembers[reportId]) dbMembers[reportId].matched = true;
       } else {
-        if (amount === 1450) newMembers.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
-        else if (amount === 1700) specialCases.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
-        else newMembers.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+          // 其他金額 (如 250) 走標準流程
+          if (dbMembers[reportId]) {
+            dbMembers[reportId].matched = true;
+            if (dbMembers[reportId].isLeft) extra.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+          } else {
+            // 不在資料庫且金額不是1450/1700 -> 歸類為新成員待確認
+            newMembers.push({ id: reportId, name: reportName, campus: reportCampus, amount: amount });
+          }
       }
     });
+    
     for (const key in dbMembers) if (!dbMembers[key].isLeft && !dbMembers[key].matched) missing.push({ id: dbMembers[key].id, name: dbMembers[key].name, campus: dbMembers[key].campus, unit: dbMembers[key].unit });
+    
     return { success: true, results: { missing, extra, newMembers, specialCases } };
   } catch (e) {
     return { success: false, error: e.message };
