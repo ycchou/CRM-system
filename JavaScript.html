@@ -339,7 +339,7 @@ const App = {
             }
         });
         
-        // --- 儀表板邏輯 (Dashboard) ---
+        // --- 儀表板邏輯 (Dashboard) - Updated for DataLabels & Colors ---
         let charts = {};
         const loadDashboardData = () => { 
             App.toggleLoader(true); 
@@ -348,23 +348,162 @@ const App = {
                 App.toggleLoader(false); 
             }).getDashboardAnalytics(App.token); 
         };
+
         const renderDash = (d) => {
+            // 啟用 DataLabels 插件
+            if (Chart.register) {
+                Chart.register(ChartDataLabels);
+            }
+
             document.getElementById("kpi-total-members").textContent = d.totalActiveMembers;
             document.getElementById("kpi-new-this-month").textContent = d.newThisMonth;
             document.getElementById("kpi-leaves-this-month").textContent = d.leavesThisMonth;
             document.getElementById("kpi-avg-age").textContent = d.avgAge;
             
-            const po = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10 } } } };
-            const cc = (id, cfg) => { const ctx=document.getElementById(id).getContext('2d'); if(charts[id]) charts[id].destroy(); charts[id]=new Chart(ctx, cfg); };
+            // 1. 圓餅圖/甜甜圈圖共用設定 (顯示百分比)
+            const pieOptions = { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { position: 'right', labels: { boxWidth: 10 } },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold' },
+                        formatter: (value, ctx) => {
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.map(data => { sum += data; });
+                            let percentage = sum === 0 ? "0%" : (value * 100 / sum).toFixed(1) + "%";
+                            return percentage;
+                        }
+                    }
+                } 
+            };
+
+            // 2. 長條圖共用設定 (顯示數字)
+            const barOptions = { 
+                maintainAspectRatio: false,
+                layout: { padding: { top: 20 } }, // 避免上方數字被切掉
+                plugins: {
+                    legend: { display: true }, // 預設顯示，年齡分布會關掉
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'end',
+                        color: '#444',
+                        font: { weight: 'bold' }
+                    }
+                }
+            };
+            
+            // 繪圖輔助函式
+            const cc = (id, cfg) => { 
+                const ctx = document.getElementById(id).getContext('2d'); 
+                if(charts[id]) charts[id].destroy(); 
+                charts[id] = new Chart(ctx, cfg); 
+            };
             const rt = (id, arr, t) => document.getElementById(id).innerHTML=`<thead><tr><th>${t}</th><th>人數</th></tr></thead><tbody>${arr.map(i=>`<tr><td>${i.key}</td><td>${i.value}</td></tr>`).join('')}</tbody>`;
             
-            cc('join-leave-month-chart', { type: 'bar', data: { labels: d.joinLeaveByMonth.map(x=>x.key), datasets: [{label:'入會',data:d.joinLeaveByMonth.map(x=>x.joins),backgroundColor:'#28a745'},{label:'退會',data:d.joinLeaveByMonth.map(x=>x.leaves),backgroundColor:'#dc3545'}] }, options: {maintainAspectRatio:false} });
-            cc('join-leave-year-chart', { type: 'bar', data: { labels: d.joinLeaveByYear.map(x=>x.key), datasets: [{label:'入會',data:d.joinLeaveByYear.map(x=>x.joins),backgroundColor:'#007bff'},{label:'退會',data:d.joinLeaveByYear.map(x=>x.leaves),backgroundColor:'#fd7e14'}] }, options: {maintainAspectRatio:false} });
-            cc('campus-chart', { type: 'doughnut', data: { labels: d.campusDistribution.map(x=>x.key), datasets: [{ data: d.campusDistribution.map(x=>x.value), backgroundColor: ['#0d6efd','#198754','#ffc107','#0dcaf0','#6f42c1'] }] }, options: po }); rt('campus-table', d.campusDistribution, '院區');
-            cc('gender-chart', { type: 'pie', data: { labels: d.genderDistribution.map(x=>x.key), datasets: [{ data: d.genderDistribution.map(x=>x.value), backgroundColor: ['#007bff','#e83e8c'] }] }, options: po }); rt('gender-table', d.genderDistribution, '性別');
-            cc('member-types-chart', { type: 'pie', data: { labels: d.memberTypeDistribution.map(x=>x.key), datasets: [{ data: d.memberTypeDistribution.map(x=>x.value), backgroundColor: ['#20c997','#6610f2'] }] }, options: po }); rt('member-types-table', d.memberTypeDistribution, '會員類別');
-            cc('labor-types-chart', { type: 'pie', data: { labels: d.laborTypeDistribution.map(x=>x.key), datasets: [{ data: d.laborTypeDistribution.map(x=>x.value), backgroundColor: ['#dc3545','#fd7e14'] }] }, options: po }); rt('labor-types-table', d.laborTypeDistribution, '勞工類別');
-            cc('age-chart', { type: 'bar', data: { labels: d.ageDistribution.map(x=>x.key), datasets: [{ label:'人數', data: d.ageDistribution.map(x=>x.value), backgroundColor: '#17a2b8' }] }, options: { maintainAspectRatio:false, plugins:{legend:{display:false}} } });
+            // [圖表1] 近24個月 (長條圖)
+            cc('join-leave-month-chart', { 
+                type: 'bar', 
+                data: { 
+                    labels: d.joinLeaveByMonth.map(x=>x.key), 
+                    datasets: [
+                        {label:'入會', data:d.joinLeaveByMonth.map(x=>x.joins), backgroundColor:'#28a745'},
+                        {label:'退會', data:d.joinLeaveByMonth.map(x=>x.leaves), backgroundColor:'#dc3545'}
+                    ] 
+                }, 
+                options: barOptions 
+            });
+
+            // [圖表2] 每年統計 (長條圖)
+            cc('join-leave-year-chart', { 
+                type: 'bar', 
+                data: { 
+                    labels: d.joinLeaveByYear.map(x=>x.key), 
+                    datasets: [
+                        {label:'入會', data:d.joinLeaveByYear.map(x=>x.joins), backgroundColor:'#007bff'},
+                        {label:'退會', data:d.joinLeaveByYear.map(x=>x.leaves), backgroundColor:'#fd7e14'}
+                    ] 
+                }, 
+                options: barOptions 
+            });
+
+            // [圖表3] 院區分布 (甜甜圈圖) - 更新配色
+            // 使用更鮮明對比的顏色
+            const distinctColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#C9CBCF'];
+            cc('campus-chart', { 
+                type: 'doughnut', 
+                data: { 
+                    labels: d.campusDistribution.map(x=>x.key), 
+                    datasets: [{ 
+                        data: d.campusDistribution.map(x=>x.value), 
+                        backgroundColor: distinctColors.slice(0, d.campusDistribution.length) 
+                    }] 
+                }, 
+                options: pieOptions 
+            }); 
+            rt('campus-table', d.campusDistribution, '院區');
+
+            // [圖表4] 性別比例 (圓餅圖)
+            cc('gender-chart', { 
+                type: 'pie', 
+                data: { 
+                    labels: d.genderDistribution.map(x=>x.key), 
+                    datasets: [{ 
+                        data: d.genderDistribution.map(x=>x.value), 
+                        backgroundColor: ['#007bff','#e83e8c', '#6c757d'] 
+                    }] 
+                }, 
+                options: pieOptions 
+            }); 
+            rt('gender-table', d.genderDistribution, '性別');
+
+            // [圖表5] 會員類別 (圓餅圖)
+            cc('member-types-chart', { 
+                type: 'pie', 
+                data: { 
+                    labels: d.memberTypeDistribution.map(x=>x.key), 
+                    datasets: [{ 
+                        data: d.memberTypeDistribution.map(x=>x.value), 
+                        backgroundColor: ['#20c997','#6610f2', '#17a2b8', '#ffc107'] 
+                    }] 
+                }, 
+                options: pieOptions 
+            }); 
+            rt('member-types-table', d.memberTypeDistribution, '會員類別');
+
+            // [圖表6] 勞工類別 (圓餅圖)
+            cc('labor-types-chart', { 
+                type: 'pie', 
+                data: { 
+                    labels: d.laborTypeDistribution.map(x=>x.key), 
+                    datasets: [{ 
+                        data: d.laborTypeDistribution.map(x=>x.value), 
+                        backgroundColor: ['#dc3545','#fd7e14', '#28a745'] 
+                    }] 
+                }, 
+                options: pieOptions 
+            }); 
+            rt('labor-types-table', d.laborTypeDistribution, '勞工類別');
+
+            // [圖表7] 年齡分布 (長條圖) - 隱藏 legend
+            const ageOptions = JSON.parse(JSON.stringify(barOptions)); // 深拷貝
+            ageOptions.plugins.legend = { display: false };
+            ageOptions.plugins.datalabels = { ...barOptions.plugins.datalabels, anchor: 'end', align: 'end' };
+
+            cc('age-chart', { 
+                type: 'bar', 
+                data: { 
+                    labels: d.ageDistribution.map(x=>x.key), 
+                    datasets: [{ 
+                        label:'人數', 
+                        data: d.ageDistribution.map(x=>x.value), 
+                        backgroundColor: '#17a2b8' 
+                    }] 
+                }, 
+                options: ageOptions 
+            });
         };
         
         // --- 帳務核對邏輯 (Reconciliation) ---
