@@ -1,0 +1,146 @@
+<!-- =============================================================== -->
+<!-- MEMBER LIST VIEW (MemberList.html) - WITH DOWNLOAD & COUNT -->
+<!-- =============================================================== -->
+<header class="page-header">
+  <h1>會員管理 (僅顯示在籍會員)</h1>
+  <div>
+    <!-- NEW: Download CSV Button -->
+    <button id="download-csv-btn" class="btn-export">📄 下載資料</button>
+    <button id="email-all-btn" class="btn-secondary">✉️ 寄信給所有會員</button>
+    <button id="add-member-btn" class="btn-primary">＋ 新增會員</button>
+  </div>
+</header>
+
+<!-- Search and Controls -->
+<div class="controls-container">
+  <div class="search-container">
+    <input type="search" id="search-input" placeholder="🔍 搜尋姓名、會員編號、手機...">
+  </div>
+  <!-- NEW: Search result count display -->
+  <div class="search-info">
+    <span id="search-result-count"></span>
+  </div>
+</div>
+
+<!-- Member Table -->
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>姓名</th>
+        <th>會員編號</th>
+        <th>院區</th>
+        <th>單位</th>
+        <th>職稱</th>
+        <th style="width: 200px;">操作</th>
+      </tr>
+    </thead>
+    <tbody id="member-table-body">
+      <!-- Member rows will be injected by JavaScript -->
+    </tbody>
+  </table>
+</div>
+
+<!-- Add/Edit Member Modal (No changes here) -->
+<div id="member-modal" class="modal">
+  <div class="modal-content">
+    <span class="modal-close-btn">&times;</span>
+    <h2 id="modal-title">新增會員</h2>
+    <form id="member-form">
+      <input type="hidden" name="row" id="form-row-id">
+      <div class="form-grid">
+        <!-- 優先顯示欄位 -->
+        <div><label for="入會日期">入會日期</label><input type="date" id="入會日期" name="入會日期"></div>
+        <div><label for="退會日期">退會日期</label><input type="date" id="退會日期" name="退會日期"></div>
+
+        <div>
+          <label for="會籍狀態">會籍狀態</label>
+          <select id="會籍狀態" name="會籍狀態">
+            <option value="在籍">在籍</option>
+            <option value="停權">停權</option>
+            <option value="退會">退會</option>
+          </select>
+        </div>
+
+        <div><label for="會員編號">會員編號</label><input type="text" id="會員編號" name="會員編號" required></div>
+        <div><label for="員工編號">員工編號</label><input type="text" id="員工編號" name="員工編號"></div>
+        <div><label for="姓名">姓名</label><input type="text" id="姓名" name="姓名" required></div>
+
+        <!-- 其他個人資料 -->
+        <div><label for="身分證字號">身分證字號</label><input type="text" id="身分證字號" name="身分證字號"></div>
+
+        <div>
+          <label for="性別">性別</label>
+          <select id="性別" name="性別">
+            <option value="男">男</option>
+            <option value="女">女</option>
+          </select>
+        </div>
+
+        <div><label for="生日">生日</label><input type="date" id="生日" name="生日"></div>
+
+        <!-- 會籍詳細與工作 -->
+        <div>
+          <label for="會員類別">會員類別</label>
+          <select id="會員類別" name="會員類別">
+            <option value="一般會員">一般會員</option>
+            <option value="贊助會員">贊助會員</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="勞工類別">勞工類別</label>
+          <select id="勞工類別" name="勞工類別">
+            <option value="約用">約用</option>
+            <option value="公職">公職</option>
+            <option value="部分工時">部分工時</option>
+          </select>
+        </div>
+
+        <div><label for="入會單有無">入會單有無</label><select id="入會單有無" name="入會單有無">
+            <option value="">請選擇</option>
+            <option value="有">有</option>
+            <option value="無">無</option>
+          </select></div>
+
+        <div>
+          <label for="院區">院區</label>
+          <select id="院區" name="院區">
+            <option value="仁愛">仁愛</option>
+            <option value="中興">中興</option>
+            <option value="松德">松德</option>
+            <option value="忠孝">忠孝</option>
+            <option value="和平">和平</option>
+            <option value="陽明">陽明</option>
+            <option value="林中昆">林中昆</option>
+            <option value="婦幼">婦幼</option>
+            <option value="院本部">院本部</option>
+          </select>
+        </div>
+
+        <div><label for="單位">單位</label><input type="text" id="單位" name="單位"></div>
+        <div><label for="職稱">職稱</label><input type="text" id="職稱" name="職稱"></div>
+
+        <!-- 聯絡與社群 -->
+        <div><label for="手機">手機</label><input type="tel" id="手機" name="手機"></div>
+        <div><label for="常用E-MAIL">常用E-MAIL</label><input type="email" id="常用E-MAIL" name="常用E-MAIL"></div>
+        <div><label for="院內E-mail">院內E-mail</label><input type="email" id="院內E-mail" name="院內E-mail"></div>
+
+        <div><label for="臉書名稱">臉書名稱</label><input type="text" id="臉書名稱" name="臉書名稱"></div>
+        <div><label for="line ID">line ID</label><input type="text" id="line ID" name="line ID"></div>
+        <div><label for="line 暱稱">line 暱稱</label><input type="text" id="line 暱稱" name="line 暱稱"></div>
+        <div><label for="是否在會員line群">是否在會員line群</label><select id="是否在會員line群" name="是否在會員line群">
+            <option value="">請選擇</option>
+            <option value="是">是</option>
+            <option value="否">否</option>
+          </select></div>
+
+        <div class="full-width"><label for="通訊處">通訊處</label><input type="text" id="通訊處" name="通訊處"></div>
+
+        <div class="full-width form-actions">
+          <button type="submit" class="btn-primary">儲存資料</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
